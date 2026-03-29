@@ -13,31 +13,47 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Validate config — prevent silent crash on missing .env
+const isConfigValid = firebaseConfig.apiKey && firebaseConfig.projectId;
 
-// Initialize App Check with reCAPTCHA v3
-// This allows real phone authentication to work
-if (import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
+let app = null;
+let auth = null;
+let db = null;
+
+if (isConfigValid) {
   try {
-    initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
-      isTokenAutoRefreshEnabled: true
-    });
-    console.log('App Check initialized successfully');
+    app = initializeApp(firebaseConfig);
+
+    // Initialize App Check with reCAPTCHA v3
+    if (import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
+      try {
+        initializeAppCheck(app, {
+          provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+          isTokenAutoRefreshEnabled: true
+        });
+        console.log('App Check initialized successfully');
+      } catch (error) {
+        console.warn('App Check initialization failed:', error);
+      }
+    }
+
+    auth = getAuth(app);
+    db = getFirestore(app);
+    console.log('✅ Firebase initialized successfully');
   } catch (error) {
-    console.warn('App Check initialization failed:', error);
+    console.error('❌ Firebase initialization failed:', error);
   }
+} else {
+  console.warn(
+    '⚠️ Firebase config missing. Create a .env file in project root with:\n' +
+    'VITE_FIREBASE_API_KEY=your_key\n' +
+    'VITE_FIREBASE_AUTH_DOMAIN=your_domain\n' +
+    'VITE_FIREBASE_PROJECT_ID=your_project_id\n' +
+    'VITE_FIREBASE_STORAGE_BUCKET=your_bucket\n' +
+    'VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id\n' +
+    'VITE_FIREBASE_APP_ID=your_app_id'
+  );
 }
 
-// Export services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-// Enable testing mode for local development
-// This allows testing with the number +919999888877
-// Moved to authService.js to handle real numbers correctly
-// if (import.meta.env.DEV) {
-//   auth.settings.appVerificationDisabledForTesting = true;
-//   console.log('🔧 Firebase Auth testing mode enabled for development');
-// }
+// Export services (may be null if config is missing — app still renders)
+export { auth, db };

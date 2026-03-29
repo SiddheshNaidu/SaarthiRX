@@ -1,137 +1,129 @@
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { useVoiceButler } from '../context/VoiceButlerContext';
 import { triggerAction } from '../utils/haptics';
-import { staggerContainer, staggerItem } from '../utils/animations';
-import DualActionButtons from '../components/DualActionButtons';
 
-// Enhanced 3D Visual pill component with premium rendering
-const PillVisual = ({ description }) => {
-    // Parse description (e.g., "Small round blue tablet")
+const PillVisual = ({ description = '' }) => {
     const desc = description.toLowerCase();
-    const isRound = desc.includes('round');
-    const isOval = desc.includes('oval');
-    const isTablet = desc.includes('tablet');
-    const isCapsule = desc.includes('capsule');
+    const isOval = desc.includes('oval') || desc.includes('capsule');
 
-    // Determine color
-    let color = '#3B82F6'; // default blue
-    let borderColor = '#2563EB';
-    if (desc.includes('white')) {
-        color = '#F3F4F6';
-        borderColor = '#D1D5DB';
-    }
-    if (desc.includes('yellow')) {
-        color = '#FCD34D';
-        borderColor = '#F59E0B';
-    }
-    if (desc.includes('pink')) {
-        color = '#F472B6';
-        borderColor = '#EC4899';
-    }
-    if (desc.includes('green')) {
-        color = '#10B981';
-        borderColor = '#059669';
-    }
-    if (desc.includes('orange')) {
-        color = '#FB923C';
-        borderColor = '#F97316';
-    }
-    if (desc.includes('red')) {
-        color = '#EF4444';
-        borderColor = '#DC2626';
-    }
-
-    // Determine shape and size
-    let shapeClasses = 'w-32 h-32 rounded-full'; // Default round
-    if (isOval || isCapsule) {
-        shapeClasses = 'w-40 h-24 rounded-full';
-    }
-    if (isTablet && !isRound) {
-        shapeClasses = 'w-32 h-32 rounded-2xl';
-    }
+    let color = '#3B82F6';
+    if (desc.includes('white')) color = '#F3F4F6';
+    if (desc.includes('yellow')) color = '#FCD34D';
+    if (desc.includes('pink')) color = '#F472B6';
+    if (desc.includes('green')) color = '#10B981';
+    if (desc.includes('orange')) color = '#FB923C';
+    if (desc.includes('red')) color = '#EF4444';
 
     return (
-        <div className="flex items-center justify-center my-8">
-            <motion.div
-                className={`
-          ${shapeClasses}
-          border-4
-          relative
-        `}
-                style={{
-                    backgroundColor: color,
-                    borderColor: borderColor,
-                    boxShadow: `
-            0 20px 50px rgba(0,0,0,0.25),
-            inset 0 -10px 20px rgba(0,0,0,0.15),
-            inset 0 10px 20px rgba(255,255,255,0.3)
-          `
-                }}
-                initial={{ scale: 0, rotateY: 0, rotateX: 0 }}
-                animate={{
-                    scale: 1,
-                    rotateY: 360,
-                    rotateX: 10
-                }}
-                transition={{
-                    scale: { duration: 0.6, delay: 0.2 },
-                    rotateY: { duration: 1.5, delay: 0.3, ease: "easeOut" }
-                }}
-            >
-                {/* Shine effect */}
-                <div
-                    className="absolute inset-0 rounded-inherit opacity-40"
-                    style={{
-                        background: 'linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.8) 100%)',
-                        borderRadius: 'inherit'
-                    }}
-                />
-
-                {/* Center line for tablets */}
-                {isTablet && !isRound && (
-                    <div
-                        className="absolute top-0 bottom-0 left-1/2 w-0.5 transform -translate-x-1/2"
-                        style={{
-                            backgroundColor: borderColor,
-                            opacity: 0.3
-                        }}
-                    />
-                )}
-            </motion.div>
+        <div className="flex items-center justify-center my-4" aria-hidden="true">
+            <div
+                className={`${isOval ? 'w-40 h-24' : 'w-28 h-28'} rounded-full border-4 border-white shadow-lg`}
+                style={{ backgroundColor: color }}
+            />
         </div>
     );
 };
 
 const PrescriptionView = () => {
-    const { id } = useParams();
+    const location = useLocation();
+    const navigate = useNavigate();
     const { language, setCurrentPageContent } = useApp();
     const { announcePageAndAction } = useVoiceButler();
 
-    // Sample prescription data
-    const prescription = {
-        name: 'Amlodipine',
-        dosage: '5mg',
-        visualDescription: 'Small round blue tablet',
-        timing: [
-            { time: 'morning', icon: '☀️', label: 'Morning' },
-            { time: 'evening', icon: '🌙', label: 'Evening' }
-        ],
-        withFood: true,
+    const prescription = location.state?.medicine;
+
+    const text = {
+        title: {
+            'en-US': 'Prescription Details',
+            'hi-IN': 'पर्चे का विवरण',
+            'mr-IN': 'प्रिस्क्रिप्शन तपशील'
+        },
+        back: {
+            'en-US': 'Back',
+            'hi-IN': 'वापस',
+            'mr-IN': 'मागे'
+        },
+        whenToTake: {
+            'en-US': 'When to Take',
+            'hi-IN': 'कब लेना है',
+            'mr-IN': 'कधी घ्यायचे'
+        },
+        food: {
+            'en-US': 'Food Instructions',
+            'hi-IN': 'खाने के निर्देश',
+            'mr-IN': 'जेवणासंबंधी सूचना'
+        },
         instructions: {
-            'en-US': 'Take one tablet in the morning and one in the evening with food.',
-            'hi-IN': 'सुबह और शाम को भोजन के साथ एक गोली लें।',
-            'mr-IN': 'सकाळी आणि संध्याकाळी जेवणासोबत एक गोळी घ्या.'
+            'en-US': 'Instructions',
+            'hi-IN': 'निर्देश',
+            'mr-IN': 'सूचना'
+        },
+        withFood: {
+            'en-US': 'Take with food',
+            'hi-IN': 'खाने के साथ लें',
+            'mr-IN': 'जेवणासोबत घ्या'
+        },
+        emptyStomach: {
+            'en-US': 'Take on empty stomach',
+            'hi-IN': 'खाली पेट लें',
+            'mr-IN': 'रिकाम्या पोटी घ्या'
+        },
+        repeat: {
+            'en-US': 'Repeat Instructions',
+            'hi-IN': 'निर्देश दोहराएं',
+            'mr-IN': 'सूचना पुन्हा सांगा'
+        },
+        morning: {
+            'en-US': 'Morning',
+            'hi-IN': 'सुबह',
+            'mr-IN': 'सकाळ'
+        },
+        afternoon: {
+            'en-US': 'Afternoon',
+            'hi-IN': 'दोपहर',
+            'mr-IN': 'दुपार'
+        },
+        evening: {
+            'en-US': 'Evening',
+            'hi-IN': 'शाम',
+            'mr-IN': 'संध्याकाळ'
+        },
+        night: {
+            'en-US': 'Night',
+            'hi-IN': 'रात',
+            'mr-IN': 'रात्र'
+        },
+        dosageFallback: {
+            'en-US': 'As prescribed',
+            'hi-IN': 'डॉक्टर के अनुसार',
+            'mr-IN': 'डॉक्टरांच्या सल्ल्यानुसार'
+        },
+        backToMedicines: {
+            'en-US': 'Go to My Medicines',
+            'hi-IN': 'मेरी दवाइयों पर जाएं',
+            'mr-IN': 'माझ्या औषधांकडे जा'
         }
     };
 
-    const instruction = prescription.instructions[language] || prescription.instructions['en-US'];
+    const t = (key) => text[key]?.[language] || text[key]?.['en-US'];
+
+    useEffect(() => {
+        if (!prescription) {
+            navigate('/medicines', { replace: true });
+        }
+    }, [prescription, navigate]);
+
+    if (!prescription) return null;
+
+    const instruction = prescription.instructions?.[language]
+        || `${prescription.name}. ${prescription.visualDescription || ''} ${prescription.frequency || ''}. ${prescription.withFood ? t('withFood') : t('emptyStomach')}.`;
 
     useEffect(() => {
         setCurrentPageContent(instruction);
-        announcePageAndAction('Prescription Details', instruction, false);
+        announcePageAndAction(t('title'), instruction, false);
     }, [instruction, setCurrentPageContent, announcePageAndAction]);
 
     const handleRepeat = () => {
@@ -139,112 +131,85 @@ const PrescriptionView = () => {
         announcePageAndAction('', instruction, false);
     };
 
+    const timingInfo = {
+        morning: { icon: '🌅', label: t('morning') },
+        afternoon: { icon: '☀️', label: t('afternoon') },
+        evening: { icon: '🌆', label: t('evening') },
+        night: { icon: '🌙', label: t('night') }
+    };
+
+    const timings = (prescription.timing || ['morning']).map((time) => timingInfo[time] || timingInfo.morning);
+
     return (
         <motion.div
-            className="min-h-screen flex flex-col p-6 pb-32 overflow-y-auto bg-gradient-to-b from-gray-50 to-white"
+            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
-            {/* Header */}
-            <motion.div
-                className="text-center mb-6 mt-6"
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-            >
-                <h1 className="text-4xl font-display font-bold text-gray-800">
-                    {prescription.name}
-                </h1>
-                <p className="text-2xl text-gray-500 mt-1">{prescription.dosage}</p>
-            </motion.div>
-
-            {/* Enhanced 3D Pill Visual */}
-            <PillVisual description={prescription.visualDescription} />
-            <motion.p
-                className="text-center text-lg text-gray-600 mb-8"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-            >
-                {prescription.visualDescription}
-            </motion.p>
-
-            {/* Content Cards */}
-            <motion.div
-                className="space-y-4"
-                variants={staggerContainer}
-                initial="initial"
-                animate="animate"
-            >
-                {/* Timing Timeline */}
-                <motion.div
-                    className="bg-white p-6 rounded-2xl shadow-premium border-2 border-gray-100"
-                    variants={staggerItem}
+            <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 px-4 py-3">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="min-h-[52px] px-4 rounded-xl bg-gray-100 text-gray-800 text-lg font-semibold"
+                    aria-label={t('back')}
                 >
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-4">When to Take</h2>
-                    <div className="flex items-center justify-around">
-                        {prescription.timing.map((time, index) => (
-                            <motion.div
-                                key={time.time}
-                                className="flex flex-col items-center"
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ delay: 0.5 + index * 0.1 }}
-                            >
-                                <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary-dark rounded-full flex items-center justify-center text-3xl shadow-premium mb-2">
-                                    {time.icon}
+                    ← {t('back')}
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 sm:pb-28">
+                <div className="bg-white rounded-3xl p-5 shadow-md border border-gray-100 mb-4">
+                    <p className="text-base text-gray-500 font-medium">{t('title')}</p>
+                    <h1 className="text-3xl font-bold text-gray-800 mt-1">{prescription.name}</h1>
+                    <p className="text-xl text-gray-600 mt-1">{prescription.dosage || t('dosageFallback')}</p>
+                    <PillVisual description={prescription.visualDescription || ''} />
+                    {prescription.visualDescription && (
+                        <p className="text-base text-gray-600 text-center">💊 {prescription.visualDescription}</p>
+                    )}
+                </div>
+
+                <div className="space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <h2 className="text-2xl font-semibold text-gray-800 mb-3">{t('whenToTake')}</h2>
+                        <div className="grid grid-cols-2 gap-3">
+                            {timings.map((item, idx) => (
+                                <div key={`${item.label}-${idx}`} className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
+                                    <span className="text-2xl">{item.icon}</span>
+                                    <span className="text-lg font-semibold text-gray-700">{item.label}</span>
                                 </div>
-                                <p className="text-lg font-medium text-gray-700">{time.label}</p>
-                            </motion.div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </motion.div>
 
-                {/* Food Instructions */}
-                <motion.div
-                    className="bg-white p-6 rounded-2xl shadow-premium border-2 border-gray-100"
-                    variants={staggerItem}
-                >
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-3">Food Instructions</h2>
-                    <div className="flex items-center space-x-3">
-                        <div className="text-4xl">{prescription.withFood ? '✅' : '❌'}</div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <h2 className="text-2xl font-semibold text-gray-800 mb-3">{t('food')}</h2>
                         <p className="text-xl text-gray-700">
-                            {prescription.withFood ? 'Take with food' : 'Take on empty stomach'}
+                            {prescription.withFood ? `🍽️ ${t('withFood')}` : `🚫 ${t('emptyStomach')}`}
                         </p>
                     </div>
-                </motion.div>
 
-                {/* Full Instructions */}
-                <motion.div
-                    className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border-2 border-blue-200"
-                    variants={staggerItem}
-                >
-                    <h2 className="text-2xl font-semibold text-blue-900 mb-3">Instructions</h2>
-                    <p className="text-xl leading-relaxed text-blue-800">
-                        {instruction}
-                    </p>
-                </motion.div>
+                    <div className="bg-blue-50 p-5 rounded-2xl border border-blue-200">
+                        <h2 className="text-2xl font-semibold text-blue-900 mb-2">{t('instructions')}</h2>
+                        <p className="text-xl leading-relaxed text-blue-800">{instruction}</p>
+                    </div>
 
-                {/* Repeat Button */}
-                <motion.button
-                    onClick={handleRepeat}
-                    className="
-            w-full min-h-button p-4 rounded-xl
-            bg-white border-2 border-primary
-            text-primary font-bold text-xl
-            shadow-md hover:shadow-premium
-            transition-all
-          "
-                    variants={staggerItem}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    🔊 Repeat Instructions
-                </motion.button>
-            </motion.div>
+                    <button
+                        onClick={handleRepeat}
+                        className="w-full min-h-[64px] p-4 rounded-2xl bg-white border-2 border-primary text-primary font-bold text-xl"
+                        aria-label={t('repeat')}
+                    >
+                        🔊 {t('repeat')}
+                    </button>
 
-            {/* Global Action Button */}
-            <DualActionButtons />
+                    <button
+                        onClick={() => navigate('/medicines')}
+                        className="w-full min-h-[64px] p-4 rounded-2xl bg-gray-100 text-gray-800 font-bold text-xl"
+                        aria-label={t('backToMedicines')}
+                    >
+                        {t('backToMedicines')}
+                    </button>
+                </div>
+            </div>
         </motion.div>
     );
 };

@@ -13,7 +13,7 @@ import { useVoiceButler } from '../context/VoiceButlerContext';
 import { verifyMedicinePhoto } from '../services/geminiService';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl } from '../utils/imageUtils';
-import DualActionButtons from '../components/DualActionButtons';
+
 
 const MyMedicines = () => {
     const navigate = useNavigate();
@@ -40,6 +40,7 @@ const MyMedicines = () => {
         'en-US': {
             title: 'My Medicines',
             subtitle: 'Your medicine inventory',
+            prescriptionDetails: 'Prescription Details',
             addNew: 'Add Medicine',
             empty: 'No medicines yet',
             emptyHint: "Say 'Scan' to add one",
@@ -64,11 +65,18 @@ const MyMedicines = () => {
             goBack: '← Go Back',
             repeatInstructions: 'Repeat Instructions',
             tryAgain: 'Could not identify medicine. Please try again with a clearer photo.',
-            timeoutError: 'Taking too long. Check internet and try again.'
+            timeoutError: 'Taking too long. Check internet and try again.',
+            matchFoundTitle: 'Match Found!',
+            notInPrescriptionTitle: 'Not in Prescription',
+            unknown: 'Unknown',
+            ok: 'OK',
+            checkDoctor: 'Please check with your doctor.',
+            viewFullDetails: 'View Full Prescription Details'
         },
         'hi-IN': {
             title: 'मेरी दवाइयां',
             subtitle: 'आपकी दवाई सूची',
+            prescriptionDetails: 'पर्चे का विवरण',
             addNew: 'दवाई जोड़ें',
             empty: 'कोई दवाई नहीं',
             emptyHint: "'स्कैन' बोलें जोड़ने के लिए",
@@ -93,11 +101,18 @@ const MyMedicines = () => {
             goBack: '← वापस जाएं',
             repeatInstructions: 'निर्देश दोहराएं',
             tryAgain: 'दवाई पहचान नहीं सकी। कृपया स्पष्ट फोटो से पुनः प्रयास करें।',
-            timeoutError: 'बहुत समय लग रहा है। इंटरनेट जांचें और फिर प्रयास करें।'
+            timeoutError: 'बहुत समय लग रहा है। इंटरनेट जांचें और फिर प्रयास करें।',
+            matchFoundTitle: 'मेल मिला!',
+            notInPrescriptionTitle: 'पर्चे में नहीं',
+            unknown: 'अज्ञात',
+            ok: 'ठीक है',
+            checkDoctor: 'कृपया अपने डॉक्टर से जांच करें।',
+            viewFullDetails: 'पूरा पर्चा विवरण देखें'
         },
         'mr-IN': {
             title: 'माझी औषधे',
             subtitle: 'तुमची औषध यादी',
+            prescriptionDetails: 'प्रिस्क्रिप्शन तपशील',
             addNew: 'औषध जोडा',
             empty: 'कोणतेही औषध नाही',
             emptyHint: "जोडण्यासाठी 'स्कॅन' म्हणा",
@@ -119,7 +134,13 @@ const MyMedicines = () => {
             goBack: '← मागे जा',
             repeatInstructions: 'सूचना पुन्हा सांगा',
             tryAgain: 'औषध ओळखता आले नाही. कृपया स्पष्ट फोटोसह पुन्हा प्रयत्न करा.',
-            timeoutError: 'खूप वेळ लागत आहे. इंटरनेट तपासा आणि पुन्हा प्रयत्न करा.'
+            timeoutError: 'खूप वेळ लागत आहे. इंटरनेट तपासा आणि पुन्हा प्रयत्न करा.',
+            matchFoundTitle: 'जुळले!',
+            notInPrescriptionTitle: 'प्रिस्क्रिप्शनमध्ये नाही',
+            unknown: 'अज्ञात',
+            ok: 'ठीक आहे',
+            checkDoctor: 'कृपया तुमच्या डॉक्टरांशी तपासा.',
+            viewFullDetails: 'संपूर्ण प्रिस्क्रिप्शन तपशील पहा'
         }
     };
 
@@ -292,7 +313,7 @@ const MyMedicines = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-32"
+            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -366,14 +387,14 @@ const MyMedicines = () => {
                                         <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">
                                             {medicine.name}
                                         </h3>
-                                        <p className="text-xs sm:text-sm text-gray-500 truncate">
+                                        <p className="text-base text-gray-600 truncate">
                                             {medicine.visualType || 'Tablet'} • {medicine.dosage || ''}
                                         </p>
                                     </div>
 
                                     {/* Quantity + Details */}
                                     <div className="flex flex-col items-end gap-1 shrink-0">
-                                        <div className={`px-2 py-0.5 rounded-full text-xs sm:text-sm font-bold ${
+                                        <div className={`px-3 py-1 rounded-full text-base font-bold ${
                                             medicine.quantity < 3
                                                 ? 'bg-red-100 text-red-600'
                                                 : 'bg-gray-100 text-gray-700'
@@ -383,8 +404,9 @@ const MyMedicines = () => {
 
                                         <motion.button
                                             onClick={() => setSelectedMedicine(medicine)}
-                                            className="text-blue-500 text-xs font-medium flex items-center gap-0.5"
+                                            className="text-blue-600 text-base font-semibold flex items-center gap-1"
                                             whileTap={{ scale: 0.95 }}
+                                            aria-label={`${labels.details} ${medicine.name}`}
                                         >
                                             👁️ <span className="hidden sm:inline">{labels.details}</span><span className="sm:hidden">Info</span>
                                         </motion.button>
@@ -392,7 +414,7 @@ const MyMedicines = () => {
                                 </div>
 
                                 {medicine.quantity < 3 && (
-                                    <div className="mt-2 pl-6 text-xs text-red-500 font-medium">
+                                    <div className="mt-2 pl-6 text-base text-red-500 font-semibold">
                                         ⚠️ {labels.lowStock}
                                     </div>
                                 )}
@@ -480,12 +502,12 @@ const MyMedicines = () => {
                     >
                         {/* Header */}
                         <div className="bg-gradient-to-br from-orange-400 to-orange-500 text-white p-6 pt-10 rounded-b-3xl">
-                            <h1 className="text-3xl font-bold mb-1">Prescription Details</h1>
+                            <h1 className="text-3xl font-bold mb-1">{labels.prescriptionDetails}</h1>
                             {selectedMedicine.doctorName && (
                                 <p className="text-white/80">{selectedMedicine.doctorName}</p>
                             )}
                             {selectedMedicine.prescriptionDate && (
-                                <p className="text-white/60 text-sm">{selectedMedicine.prescriptionDate}</p>
+                                <p className="text-white/70 text-base">{selectedMedicine.prescriptionDate}</p>
                             )}
                         </div>
 
@@ -596,24 +618,34 @@ const MyMedicines = () => {
                         </div>
 
                         {/* Bottom Buttons */}
-                        <div className="p-4 pb-8 flex gap-3">
+                        <div className="p-4 pb-8 flex flex-col gap-3">
                             <motion.button
-                                onClick={() => setSelectedMedicine(null)}
-                                className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold text-lg"
+                                onClick={() => navigate(`/prescription/${selectedMedicine.id || 'details'}`, { state: { medicine: selectedMedicine } })}
+                                className="w-full py-4 bg-blue-50 text-blue-600 border-2 border-blue-200 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
                                 whileTap={{ scale: 0.95 }}
+                                aria-label={labels.viewFullDetails}
                             >
-                                {labels.goBack}
+                                📋 {labels.viewFullDetails}
                             </motion.button>
-                            <motion.button
-                                onClick={() => {
-                                    const msg = `${selectedMedicine.name}. ${selectedMedicine.visualDescription || 'Take'} ${selectedMedicine.frequency || 'daily'}. ${selectedMedicine.withFood ? labels.takeWithFood : labels.takeOnEmptyStomach}.`;
-                                    speak(msg);
-                                }}
-                                className="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
-                                whileTap={{ scale: 0.95 }}
-                            >
-                                🔊 {labels.repeatInstructions}
-                            </motion.button>
+                            <div className="flex gap-3">
+                                <motion.button
+                                    onClick={() => setSelectedMedicine(null)}
+                                    className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold text-lg"
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    {labels.goBack}
+                                </motion.button>
+                                <motion.button
+                                    onClick={() => {
+                                        const msg = `${selectedMedicine.name}. ${selectedMedicine.visualDescription || 'Take'} ${selectedMedicine.frequency || 'daily'}. ${selectedMedicine.withFood ? labels.takeWithFood : labels.takeOnEmptyStomach}.`;
+                                        speak(msg);
+                                    }}
+                                    className="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    🔊 {labels.repeatInstructions}
+                                </motion.button>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -648,20 +680,17 @@ const MyMedicines = () => {
                             </div>
                             
                             {/* Result Title */}
-                            <h2 className={`text-2xl font-bold mb-3 ${
-                                verificationResult.matchFound ? 'text-green-800' : 'text-red-800'
-                            }`}>
-                                {verificationResult.matchFound 
-                                    ? (language === 'hi-IN' ? 'मेल मिला!' : 'Match Found!')
-                                    : (language === 'hi-IN' ? 'पर्चे में नहीं' : 'Not in Prescription')
-                                }
+                                <h2 className={`text-2xl font-bold mb-3 ${
+                                    verificationResult.matchFound ? 'text-green-800' : 'text-red-800'
+                                }`}>
+                                {verificationResult.matchFound ? labels.matchFoundTitle : labels.notInPrescriptionTitle}
                             </h2>
                             
                             {/* Detected Medicine Name */}
                             <p className={`text-xl font-semibold mb-4 ${
                                 verificationResult.matchFound ? 'text-green-700' : 'text-red-700'
                             }`}>
-                                {verificationResult.detectedName || 'Unknown'}
+                                {verificationResult.detectedName || labels.unknown}
                             </p>
                             
                             {/* Preview Image */}
@@ -677,10 +706,8 @@ const MyMedicines = () => {
                             
                             {/* Warning Message for No Match */}
                             {!verificationResult.matchFound && (
-                                <p className="text-red-600 text-sm mb-4">
-                                    {language === 'hi-IN' 
-                                        ? 'कृपया अपने डॉक्टर से जांच करें।'
-                                        : 'Please check with your doctor.'}
+                                <p className="text-red-600 text-base mb-4 font-medium">
+                                    {labels.checkDoctor}
                                 </p>
                             )}
                             
@@ -691,8 +718,9 @@ const MyMedicines = () => {
                                     verificationResult.matchFound ? 'bg-green-500' : 'bg-red-500'
                                 }`}
                                 whileTap={{ scale: 0.95 }}
+                                aria-label={labels.ok}
                             >
-                                {language === 'hi-IN' ? 'ठीक है' : 'OK'}
+                                {labels.ok}
                             </motion.button>
                         </motion.div>
                     </motion.div>
@@ -700,7 +728,7 @@ const MyMedicines = () => {
             </AnimatePresence>
 
             {/* Global Action Button */}
-            <DualActionButtons />
+            {/* BottomNav handles global navigation and voice controls */}
         </motion.div>
     );
 };

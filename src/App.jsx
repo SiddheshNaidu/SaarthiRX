@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { AppProvider } from './context/AppContext';
@@ -6,7 +7,8 @@ import { VoiceButlerProvider } from './context/VoiceButlerContext';
 import PremiumLayout from './components/PremiumLayout';
 import VoiceNavigation from './components/VoiceNavigation';
 import ReminderScheduler from './components/ReminderScheduler';
-import NamasteGateway from './pages/NamasteGateway';
+import ProtectedRoute from './components/ProtectedRoute';
+import BottomNav from './components/BottomNav';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -28,21 +30,23 @@ function AnimatedRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* NamasteGateway route disabled - keeping file for potential future use */}
-        {/* <Route path="/namaste" element={<NamasteGateway />} /> */}
+        {/* Public routes */}
         <Route path="/" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/scan" element={<ScanPrescription />} />
-        <Route path="/prescription/:id" element={<PrescriptionView />} />
-        <Route path="/reminders" element={<ReminderList />} />
+
+        {/* Protected routes — redirect to / if not authenticated */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/scan" element={<ProtectedRoute><ScanPrescription /></ProtectedRoute>} />
+        <Route path="/prescription/:id" element={<ProtectedRoute><PrescriptionView /></ProtectedRoute>} />
+        <Route path="/reminders" element={<ProtectedRoute><ReminderList /></ProtectedRoute>} />
         <Route path="/reminder" element={<Navigate to="/reminders" replace />} />
-        <Route path="/reminder/alert/:id" element={<ReminderAlert />} />
-        <Route path="/reminder/alert" element={<ReminderAlert />} />
-        <Route path="/medicines" element={<MyMedicines />} />
-        <Route path="/history" element={<MedicineHistory />} />
-        <Route path="/scan-medicine" element={<ScanMedicine />} />
+        <Route path="/reminder/alert/:id" element={<ProtectedRoute><ReminderAlert /></ProtectedRoute>} />
+        <Route path="/reminder/alert" element={<ProtectedRoute><ReminderAlert /></ProtectedRoute>} />
+        <Route path="/medicines" element={<ProtectedRoute><MyMedicines /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><MedicineHistory /></ProtectedRoute>} />
+        <Route path="/scan-medicine" element={<ProtectedRoute><ScanMedicine /></ProtectedRoute>} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -50,6 +54,19 @@ function AnimatedRoutes() {
 }
 
 function App() {
+  const [isOffline, setIsOffline] = useState(typeof window !== 'undefined' ? !navigator.onLine : false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const location = typeof window !== 'undefined' ? window.location.pathname : '/';
   const isAlarmPage = location.startsWith('/alarm');
 
@@ -58,6 +75,13 @@ function App() {
       <Router>
         <VoiceProvider>
           <VoiceButlerProvider>
+            {/* Global Offline Banner */}
+            {isOffline && (
+              <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-3 z-[9999] font-bold text-base shadow-md animate-pulse">
+                ⚠️ You are offline. Voice AI and Scan features may not work.
+              </div>
+            )}
+            
             {/* Alarm Page - Standalone (no layout wrapper) */}
             {isAlarmPage ? (
               <Routes>
@@ -65,11 +89,12 @@ function App() {
                 <Route path="/alarm" element={<AlarmPage />} />
               </Routes>
             ) : (
-              /* Regular pages with PremiumLayout and ReminderScheduler */
+              /* Regular pages with PremiumLayout, BottomNav, and ReminderScheduler */
               <PremiumLayout>
                 <VoiceNavigation>
                   <ReminderScheduler>
                     <AnimatedRoutes />
+                    <BottomNav />
                     <DevTools />
                   </ReminderScheduler>
                 </VoiceNavigation>

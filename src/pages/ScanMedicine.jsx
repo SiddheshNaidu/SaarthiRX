@@ -13,7 +13,7 @@ import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUtils';
 import { verifyMedicinePhoto } from '../services/geminiService';
 import { findBestMedicineMatch } from '../data/medicineDatabase';
-import DualActionButtons from '../components/DualActionButtons';
+
 
 
 const SCAN_STATES = {
@@ -335,7 +335,7 @@ const ScanMedicine = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-32"
+            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -550,7 +550,7 @@ const ScanMedicine = () => {
                 className="hidden"
             />
 
-            <DualActionButtons />
+            {/* BottomNav handles global nav and voice controls */}
         </motion.div>
     );
 };

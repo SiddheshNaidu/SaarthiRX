@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
-import DualActionButtons from '../components/DualActionButtons';
+
 
 const MedicineHistory = () => {
     const navigate = useNavigate();
@@ -123,7 +123,7 @@ const MedicineHistory = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-32"
+            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -145,11 +145,11 @@ const MedicineHistory = () => {
                 <div className="flex gap-4 mt-4">
                     <div className="bg-white/20 rounded-xl px-4 py-2 text-center">
                         <div className="text-2xl font-bold">{stats.taken}</div>
-                        <div className="text-xs opacity-80">✓ {t.taken}</div>
+                        <div className="text-base opacity-90 font-medium">✓ {t.taken}</div>
                     </div>
                     <div className="bg-white/20 rounded-xl px-4 py-2 text-center">
                         <div className="text-2xl font-bold">{stats.skipped}</div>
-                        <div className="text-xs opacity-80">⏭️ {t.skipped}</div>
+                        <div className="text-base opacity-90 font-medium">⏭️ {t.skipped}</div>
                     </div>
                 </div>
             </div>
@@ -160,7 +160,7 @@ const MedicineHistory = () => {
                     <motion.button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`flex-1 py-2.5 px-4 rounded-xl font-medium text-sm transition-all ${
+                        className={`flex-1 py-3 px-4 rounded-xl font-semibold text-base transition-all ${
                             filter === f
                                 ? 'bg-purple-500 text-white shadow-md'
                                 : 'bg-white text-gray-600 shadow-sm'
@@ -191,7 +191,7 @@ const MedicineHistory = () => {
                         {Object.entries(groupedHistory).map(([date, items]) => (
                             <div key={date}>
                                 {/* Date Header */}
-                                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
+                                <h3 className="text-base font-semibold text-gray-600 uppercase tracking-wide mb-2 px-1">
                                     {date}
                                 </h3>
                                 
@@ -219,10 +219,10 @@ const MedicineHistory = () => {
                                                         {item.action === 'taken' ? '✓' : '⏭️'}
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-semibold text-gray-800">
+                                                        <h4 className="text-lg font-semibold text-gray-800">
                                                             {item.medicineName}
                                                         </h4>
-                                                        <p className="text-xs text-gray-500">
+                                                        <p className="text-base text-gray-600">
                                                             {item.action === 'taken' ? t.takenAt : t.skippedAt} {formatTime(item.time)}
                                                         </p>
                                                     </div>
@@ -238,7 +238,7 @@ const MedicineHistory = () => {
             </div>
 
             {/* Global Action Button */}
-            <DualActionButtons />
+            {/* BottomNav handles global nav and voice controls */}
         </motion.div>
     );
 };

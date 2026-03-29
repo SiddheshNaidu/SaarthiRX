@@ -34,6 +34,12 @@ export const AppProvider = ({ children }) => {
 
     // Listen for Firebase auth state changes
     useEffect(() => {
+        // Guard: skip if Firebase auth is not initialized (missing .env)
+        if (!auth) {
+            setIsAuthLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
             setFirebaseUser(fbUser);
 

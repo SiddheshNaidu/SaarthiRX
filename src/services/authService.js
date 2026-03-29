@@ -26,6 +26,13 @@ export const setupRecaptcha = (containerId) => {
         return null;
     }
 
+    // MOCK MODE: Bypass recaptcha when auth is null (missing .env keys)
+    if (!auth && import.meta.env.DEV) {
+        console.warn('🔥 Mock Auth Mode: Skipping reCAPTCHA setup because Firebase config is missing');
+        window.recaptchaVerifier = { clear: () => {} };
+        return window.recaptchaVerifier;
+    }
+
     // 2. SINGLETON: If it already exists, return it. DO NOT create a new one.
     if (window.recaptchaVerifier) {
         console.log('♻️ Reusing existing reCAPTCHA verifier');
@@ -61,6 +68,31 @@ export const setupRecaptcha = (containerId) => {
  */
 export const sendOtp = async (phoneNumber) => {
     try {
+        // Format phone number with India country code if not present
+        const formattedPhone = phoneNumber.startsWith('+')
+            ? phoneNumber
+            : `+91${phoneNumber}`;
+
+        // MOCK MODE: Fake the OTP send if missing keys in dev
+        if (!auth && import.meta.env.DEV) {
+            console.warn(`🔥 Mock Auth Mode: Faking OTP send to ${formattedPhone}`);
+            // Wait to simulate network latency
+            await new Promise(r => setTimeout(r, 1500));
+            
+            confirmationResult = {
+                confirm: async (otp) => {
+                    await new Promise(r => setTimeout(r, 1000));
+                    if (otp === '123456') {
+                        return { user: { uid: `mock_user_${formattedPhone.replace(/\D/g, '')}` } };
+                    }
+                    const err = new Error('Invalid mock code');
+                    err.code = 'auth/invalid-verification-code';
+                    throw err;
+                }
+            };
+            return true;
+        }
+
         // 1. Ensure verifier exists (Singleton check)
         if (!window.recaptchaVerifier) {
             console.log('🔄 reCAPTCHA not found, initializing...');
@@ -72,11 +104,6 @@ export const sendOtp = async (phoneNumber) => {
         if (!appVerifier) {
             throw new Error('reCAPTCHA not initialized');
         }
-
-        // Format phone number with India country code if not present
-        const formattedPhone = phoneNumber.startsWith('+')
-            ? phoneNumber
-            : `+91${phoneNumber}`;
 
         // DYNAMIC AUTH SETTING:
         // Enable testing mode ONLY for the specific test number in DEV
@@ -182,7 +209,12 @@ export const getCurrentUser = () => {
  */
 export const signOutUser = async () => {
     try {
-        await signOut(auth);
+        if (auth) {
+            await signOut(auth);
+        } else {
+            console.log('🔥 Mock Mode: Sign out performed');
+        }
+        
         confirmationResult = null;
 
         if (window.recaptchaVerifier) {

@@ -6,7 +6,7 @@ import { useVoice } from '../context/VoiceContext';
 import { triggerAction } from '../utils/haptics';
 import { cardHover, staggerContainer, staggerItem } from '../utils/animations';
 import { getPrompt } from '../utils/translations';
-import DualActionButtons from '../components/DualActionButtons';
+import { CameraIcon, PillIcon, BellIcon, SearchIcon, ClipboardIcon } from '../components/Icons';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -154,7 +154,7 @@ const Dashboard = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col p-6 pb-32 relative overflow-y-auto bg-gradient-to-b from-gray-50 to-white"
+            className="min-h-screen flex flex-col p-6 pb-44 relative overflow-y-auto bg-gradient-to-b from-gray-50 to-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -209,7 +209,7 @@ const Dashboard = () => {
                         {/* Icon */}
                         <div className="flex items-center justify-center mb-4">
                             <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                                <span className="text-5xl">📸</span>
+                                <CameraIcon className="w-10 h-10 text-white" />
                             </div>
                         </div>
 
@@ -240,7 +240,7 @@ const Dashboard = () => {
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="text-4xl mb-2">💊</div>
+                        <div className="mb-2 text-primary"><PillIcon className="w-10 h-10" /></div>
                         <div className="text-lg font-semibold text-gray-800 text-center">
                             {getPrompt('DASHBOARD_MEDICINES', language)}
                         </div>
@@ -255,7 +255,7 @@ const Dashboard = () => {
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="text-4xl mb-2">⏰</div>
+                        <div className="mb-2 text-primary"><BellIcon className="w-10 h-10" /></div>
                         <div className="text-lg font-semibold text-gray-800 text-center">
                             {getPrompt('DASHBOARD_REMINDERS', language)}
                         </div>
@@ -270,7 +270,7 @@ const Dashboard = () => {
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="text-4xl mb-2">🔍</div>
+                        <div className="mb-2 text-blue-500"><SearchIcon className="w-10 h-10" /></div>
                         <div className="text-lg font-semibold text-gray-800 text-center">
                             {getPrompt('DASHBOARD_SCAN_MEDICINE', language)}
                         </div>
@@ -285,7 +285,7 @@ const Dashboard = () => {
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="text-4xl mb-2">📋</div>
+                        <div className="mb-2 text-primary"><ClipboardIcon className="w-10 h-10" /></div>
                         <div className="text-lg font-semibold text-gray-800 text-center">
                             {getPrompt('DASHBOARD_HISTORY', language)}
                         </div>
@@ -311,8 +311,7 @@ const Dashboard = () => {
                 </motion.div>
             </motion.div>
 
-            {/* Speaker + Mic Dual Action Buttons */}
-            <DualActionButtons onRepeat={handleRepeat} />
+            {/* Speaker + Mic now merged into global BottomNav */}
         </motion.div>
     );
 };

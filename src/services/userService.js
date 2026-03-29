@@ -21,6 +21,20 @@ const USERS_COLLECTION = 'users';
  */
 export const saveUserToFirestore = async (uid, userData) => {
     try {
+        if (!db) {
+            console.warn(`🔥 Mock Mode: Faking saveUserToFirestore for ${uid}`);
+            return {
+                uid,
+                phone: userData.phone,
+                name: userData.name,
+                gender: userData.gender,
+                age: parseInt(userData.age || '0', 10),
+                language: userData.language || 'hi-IN',
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+        }
+
         const userRef = doc(db, USERS_COLLECTION, uid);
         
         const userDoc = {
@@ -51,6 +65,11 @@ export const saveUserToFirestore = async (uid, userData) => {
  */
 export const getUserFromFirestore = async (uid) => {
     try {
+        if (!db) {
+            console.warn(`🔥 Mock Mode: Returning null for getUserFromFirestore (${uid}) to simulate new user`);
+            return null; // Return null so the login flow prompts for a name
+        }
+
         const userRef = doc(db, USERS_COLLECTION, uid);
         const userSnap = await getDoc(userRef);
 
@@ -73,6 +92,11 @@ export const getUserFromFirestore = async (uid) => {
  */
 export const updateUserInFirestore = async (uid, updates) => {
     try {
+        if (!db) {
+            console.warn(`🔥 Mock Mode: Faking updateUserInFirestore for ${uid}`);
+            return;
+        }
+
         const userRef = doc(db, USERS_COLLECTION, uid);
         
         await updateDoc(userRef, {
@@ -94,6 +118,11 @@ export const updateUserInFirestore = async (uid, updates) => {
  */
 export const checkUserExistsByPhone = async (phoneNumber) => {
     try {
+        if (!db) {
+            console.warn('🔥 Mock Mode: Faking checkUserExistsByPhone');
+            return null;
+        }
+
         // Normalize phone number
         const normalizedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
         

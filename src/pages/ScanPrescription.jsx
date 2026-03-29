@@ -15,7 +15,7 @@ import { analyzePrescription, checkDrugInteractions, generateVoiceSummary, gener
 import { saveMedicines } from '../services/medicationService';
 import { createRemindersFromPrescription } from '../services/reminderService';
 import { getPrompt } from '../utils/translations';
-import DualActionButtons from '../components/DualActionButtons';
+
 import VoiceNegotiation from '../components/VoiceNegotiation';
 import MedicineVerifier from '../components/MedicineVerifier';
 import { getDemoPrescriptionData } from '../utils/demoData';
@@ -85,11 +85,16 @@ const ScanPrescription = () => {
             'hi-IN': 'फिर से कोशिश करें',
             'mr-IN': 'पुन्हा प्रयत्न करा'
         },
-        saveRemind: {
-            'en-US': 'Save & Remind Me',
-            'hi-IN': 'सहेजें और याद दिलाएं',
-            'mr-IN': 'जतन करा आणि आठवण करा'
-        },
+            saveRemind: {
+                'en-US': 'Save & Remind Me',
+                'hi-IN': 'सहेजें और याद दिलाएं',
+                'mr-IN': 'जतन करा आणि आठवण करा'
+            },
+            cancel: {
+                'en-US': 'Cancel',
+                'hi-IN': 'रद्द करें',
+                'mr-IN': 'रद्द करा'
+            },
         morning: {
             'en-US': 'Morning',
             'hi-IN': 'सुबह',
@@ -672,7 +677,7 @@ const ScanPrescription = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col p-6 pb-32 bg-gradient-to-b from-gray-50 to-white"
+            className="min-h-screen flex flex-col p-6 pb-44 bg-gradient-to-b from-gray-50 to-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -699,6 +704,7 @@ const ScanPrescription = () => {
                 onClick={() => navigate('/dashboard')}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
                 whileTap={{ scale: 0.95 }}
+                aria-label={language === 'hi-IN' ? 'वापस जाएं' : language === 'mr-IN' ? 'मागे जा' : 'Go back'}
             >
                 <span className="text-2xl">←</span>
                 <span className="text-lg font-medium">
@@ -731,6 +737,7 @@ const ScanPrescription = () => {
                             className="w-full p-8 rounded-3xl bg-gradient-to-br from-primary to-primary-dark text-white shadow-premium-lg"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
+                            aria-label={getText('camera')}
                         >
                             <div className="text-6xl mb-4">📷</div>
                             <div className="text-2xl font-bold">{getText('camera')}</div>
@@ -742,6 +749,7 @@ const ScanPrescription = () => {
                             className="w-full p-6 rounded-2xl bg-white border-2 border-gray-200 shadow-md"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
+                            aria-label={getText('gallery')}
                         >
                             <div className="text-4xl mb-2">🖼️</div>
                             <div className="text-xl font-semibold text-gray-700">{getText('gallery')}</div>
@@ -778,6 +786,7 @@ const ScanPrescription = () => {
                             className="mt-6 w-24 h-24 rounded-full bg-white border-4 border-primary shadow-xl flex items-center justify-center"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
+                            aria-label={getText('camera')}
                         >
                             <div className="w-16 h-16 rounded-full bg-primary" />
                         </motion.button>
@@ -787,8 +796,9 @@ const ScanPrescription = () => {
                             onClick={stopCamera}
                             className="mt-4 px-6 py-2 text-gray-600 text-lg"
                             whileTap={{ scale: 0.95 }}
+                            aria-label={getText('cancel')}
                         >
-                            ✕ Cancel
+                            ✕ {getText('cancel')}
                         </motion.button>
                     </motion.div>
                 )}
@@ -922,6 +932,7 @@ const ScanPrescription = () => {
                             className="px-8 py-4 bg-primary text-white rounded-full text-xl font-semibold"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            aria-label={getText('tryAgain')}
                         >
                             {getText('tryAgain')}
                         </motion.button>
@@ -954,7 +965,7 @@ const ScanPrescription = () => {
             )}
 
             {/* Global Voice/Mic Button - always at bottom */}
-            <DualActionButtons />
+            {/* BottomNav handles global nav and voice controls */}
         </motion.div>
     );
 };

@@ -18,7 +18,7 @@ import {
     sendTestNotification
 } from '../services/notificationService';
 import ReminderForm from '../components/ReminderForm';
-import DualActionButtons from '../components/DualActionButtons';
+
 import { triggerAction, triggerSuccess } from '../utils/haptics';
 
 /**
@@ -42,10 +42,16 @@ const ReminderList = () => {
         'en-US': {
             title: 'My Reminders',
             subtitle: 'Manage your medication schedule',
+            back: 'Back',
             addNew: 'Add Reminder',
             empty: 'No reminders yet',
             emptyHint: 'Tap the button below to add your first reminder',
             everyday: 'Every day',
+            enableNotificationsTitle: 'Enable Notifications',
+            enableNotificationsDesc: "Get reminded when it's time to take your medicine",
+            enableButton: 'Enable',
+            notificationsEnabled: "Notifications enabled - you'll be reminded automatically",
+            notificationsBlocked: 'Notifications are blocked. Please enable them in your browser settings to receive reminders.',
             deleteTitle: 'Delete Reminder?',
             deleteConfirm: 'Delete',
             cancel: 'Cancel',
@@ -55,10 +61,16 @@ const ReminderList = () => {
         'hi-IN': {
             title: 'मेरे रिमाइंडर',
             subtitle: 'अपना दवा शेड्यूल प्रबंधित करें',
+            back: 'वापस',
             addNew: 'रिमाइंडर जोड़ें',
             empty: 'अभी कोई रिमाइंडर नहीं',
             emptyHint: 'अपना पहला रिमाइंडर जोड़ने के लिए नीचे बटन दबाएं',
             everyday: 'हर दिन',
+            enableNotificationsTitle: 'सूचनाएं चालू करें',
+            enableNotificationsDesc: 'दवाई लेने का समय होने पर आपको याद दिलाया जाएगा',
+            enableButton: 'चालू करें',
+            notificationsEnabled: 'सूचनाएं चालू हैं - आपको समय पर याद दिलाया जाएगा',
+            notificationsBlocked: 'सूचनाएं बंद हैं। रिमाइंडर पाने के लिए ब्राउज़र सेटिंग में इन्हें चालू करें।',
             deleteTitle: 'रिमाइंडर हटाएं?',
             deleteConfirm: 'हटाएं',
             cancel: 'रद्द करें',
@@ -68,10 +80,16 @@ const ReminderList = () => {
         'mr-IN': {
             title: 'माझे रिमाइंडर',
             subtitle: 'तुमचे औषध वेळापत्रक व्यवस्थापित करा',
+            back: 'मागे',
             addNew: 'रिमाइंडर जोडा',
             empty: 'अद्याप कोणतेही रिमाइंडर नाहीत',
             emptyHint: 'तुमचा पहिला रिमाइंडर जोडण्यासाठी खालील बटण दाबा',
             everyday: 'दररोज',
+            enableNotificationsTitle: 'सूचना चालू करा',
+            enableNotificationsDesc: 'औषध घेण्याची वेळ झाली की तुम्हाला आठवण दिली जाईल',
+            enableButton: 'चालू करा',
+            notificationsEnabled: 'सूचना चालू आहेत - तुम्हाला आपोआप आठवण दिली जाईल',
+            notificationsBlocked: 'सूचना बंद आहेत. रिमाइंडर मिळवण्यासाठी ब्राउझर सेटिंगमध्ये त्या चालू करा.',
             deleteTitle: 'रिमाइंडर हटवायचा?',
             deleteConfirm: 'हटवा',
             cancel: 'रद्द करा',
@@ -163,7 +181,7 @@ const ReminderList = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-32"
+            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -174,9 +192,10 @@ const ReminderList = () => {
                     onClick={() => navigate('/dashboard')}
                     className="flex items-center gap-2 text-white/80 hover:text-white mb-4"
                     whileTap={{ scale: 0.95 }}
+                    aria-label={t.back}
                 >
                     <span className="text-2xl">←</span>
-                    <span className="text-lg">Back</span>
+                    <span className="text-xl font-semibold">{t.back}</span>
                 </motion.button>
                 <h1 className="text-4xl font-display font-bold mb-2">{t.title}</h1>
                 <p className="text-lg text-white/80">{t.subtitle}</p>
@@ -192,15 +211,16 @@ const ReminderList = () => {
                     <div className="flex items-center gap-3">
                         <span className="text-3xl">🔔</span>
                         <div className="flex-1">
-                            <p className="font-semibold text-blue-800">Enable Notifications</p>
-                            <p className="text-sm text-blue-600">Get reminded when it's time to take your medicine</p>
+                            <p className="font-semibold text-blue-800 text-lg">{t.enableNotificationsTitle}</p>
+                            <p className="text-base text-blue-700">{t.enableNotificationsDesc}</p>
                         </div>
                         <motion.button
                             onClick={handleEnableNotifications}
-                            className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-xl"
+                            className="px-4 py-3 bg-blue-500 text-white font-semibold rounded-xl text-base"
                             whileTap={{ scale: 0.95 }}
+                            aria-label={t.enableButton}
                         >
-                            Enable
+                            {t.enableButton}
                         </motion.button>
                     </div>
                 </motion.div>
@@ -208,9 +228,9 @@ const ReminderList = () => {
 
             {/* Notification Status Indicator */}
             {notificationStatus === 'granted' && (
-                <div className="mx-6 mt-4 flex items-center gap-2 text-green-600 text-sm">
+                <div className="mx-6 mt-4 flex items-center gap-2 text-green-700 text-base font-medium">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    Notifications enabled - you'll be reminded automatically
+                    {t.notificationsEnabled}
                 </div>
             )}
 
@@ -222,8 +242,8 @@ const ReminderList = () => {
                 >
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">⚠️</span>
-                        <p className="text-sm text-red-700">
-                            Notifications are blocked. Please enable them in your browser settings to receive reminders.
+                        <p className="text-base text-red-700 font-medium">
+                            {t.notificationsBlocked}
                         </p>
                     </div>
                 </motion.div>
@@ -279,15 +299,15 @@ const ReminderList = () => {
                                             {reminder.medicineName}
                                         </h3>
                                         <div className="flex items-center gap-1 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
-                                            <span className="text-sm sm:text-lg text-primary font-semibold">
+                                            <span className="text-lg text-primary font-semibold">
                                                 {formatTime(reminder.time)}
                                             </span>
-                                            <span className="text-gray-400 text-xs sm:text-base">•</span>
-                                            <span className="text-gray-500 text-xs sm:text-base">
+                                            <span className="text-gray-400 text-base">•</span>
+                                            <span className="text-gray-600 text-base">
                                                 {getTimePeriod(reminder.time)}
                                             </span>
                                         </div>
-                                        <p className="text-xs sm:text-sm text-gray-400 mt-0.5 sm:mt-1">
+                                        <p className="text-base text-gray-500 mt-1">
                                             {formatDays(reminder.repeatDays)}
                                         </p>
                                     </div>
@@ -308,6 +328,7 @@ const ReminderList = () => {
                                                 }
                                             `}
                                             whileTap={{ scale: 0.95 }}
+                                            aria-label={`${reminder.enabled ? t.enabled : t.disabled} ${reminder.medicineName}`}
                                         >
                                             <motion.div
                                                 className="w-6 h-6 sm:w-7 sm:h-7 bg-white rounded-full shadow-md"
@@ -316,14 +337,15 @@ const ReminderList = () => {
                                             />
                                         </motion.button>
 
-                                        {/* Delete Button */}
+                                        {/* Delete Button - Larger Touch Target */}
                                         <motion.button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setDeleteConfirm(reminder);
                                             }}
-                                            className="text-red-400 hover:text-red-600 p-1 sm:p-2 text-sm sm:text-base"
+                                            className="text-red-400 hover:text-red-600 p-3 sm:p-4 text-xl sm:text-2xl hover:bg-red-50 rounded-xl transition-colors mt-2"
                                             whileTap={{ scale: 0.9 }}
+                                            aria-label={`${t.deleteConfirm} ${reminder.medicineName}`}
                                         >
                                             🗑️
                                         </motion.button>
@@ -338,8 +360,9 @@ const ReminderList = () => {
             {/* Add Button - Above Mic, Centered, Simple */}
             <motion.button
                 onClick={handleAdd}
-                className="fixed bottom-32 inset-x-0 mx-auto w-fit bg-orange-500 hover:bg-orange-600 text-white px-5 py-2.5 rounded-full font-medium shadow-md flex items-center gap-2 z-40"
+                className="fixed bottom-32 inset-x-0 mx-auto w-fit bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-semibold text-lg shadow-md flex items-center gap-2 z-40"
                 whileTap={{ scale: 0.97 }}
+                aria-label={t.addNew}
             >
                 <span>+</span>
                 <span>{t.addNew}</span>
@@ -401,7 +424,7 @@ const ReminderList = () => {
             </AnimatePresence>
 
             {/* Speaker + Mic Dual Action Buttons */}
-            <DualActionButtons onRepeat={() => announce(t.title)} />
+            {/* BottomNav handles global nav and voice controls */}
         </motion.div>
     );
 };

@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useApp } from '../context/AppContext';
-import { useVoiceButler } from '../context/VoiceButlerContext';
 import { useVoice } from '../context/VoiceContext';
 import { triggerSuccess } from '../utils/haptics';
 import { cardHover, staggerContainer, staggerItem } from '../utils/animations';
@@ -10,9 +9,28 @@ import GlobalActionButton from '../components/GlobalActionButton';
 
 const Welcome = () => {
     const navigate = useNavigate();
-    const { setLanguage, setCurrentPageContent } = useApp();
-    const { announcePageAndAction } = useVoiceButler();
+    const { language, setLanguage, setCurrentPageContent } = useApp();
     const { transcript, isListening, stopListening, resetTranscript } = useVoice();
+
+    const uiText = {
+        selectLanguage: {
+            'en-US': 'Select Your Preferred Language',
+            'hi-IN': 'अपनी पसंदीदा भाषा चुनें',
+            'mr-IN': 'तुमची पसंतीची भाषा निवडा'
+        },
+        voiceHint: {
+            'en-US': 'Or tap the mic and say your language',
+            'hi-IN': 'या माइक दबाकर अपनी भाषा बोलें',
+            'mr-IN': 'किंवा माइक दाबून तुमची भाषा बोला'
+        },
+        listening: {
+            'en-US': 'Listening...',
+            'hi-IN': 'सुन रहा हूँ...',
+            'mr-IN': 'ऐकत आहे...'
+        }
+    };
+
+    const getUiText = (key) => uiText[key]?.[language] || uiText[key]?.['en-US'];
 
     const languages = [
         {
@@ -38,10 +56,14 @@ const Welcome = () => {
     ];
 
     useEffect(() => {
-        const content = 'Choose your language: English or Hindi.';
-        setCurrentPageContent(content);
+        const content = {
+            'en-US': 'Choose your language: English or Hindi.',
+            'hi-IN': 'अपनी भाषा चुनें: English या हिंदी।',
+            'mr-IN': 'तुमची भाषा निवडा: English किंवा हिंदी.'
+        };
+        setCurrentPageContent(content[language] || content['en-US']);
         // Silent welcome - no TTS on page load
-    }, [setCurrentPageContent, announcePageAndAction]);
+    }, [setCurrentPageContent, language]);
 
     // Listen for voice input and select language - INSTANT SWITCH
     useEffect(() => {
@@ -86,7 +108,7 @@ const Welcome = () => {
     }, [transcript, stopListening, resetTranscript, setLanguage, navigate]);
 
     // Handle tap-based language selection (still waits for TTS for UX)
-    const handleLanguageSelect = async (langCode, langLabel, confirmationMessage) => {
+    const handleLanguageSelect = async (langCode, confirmationMessage) => {
         triggerSuccess();
         setLanguage(langCode);
 
@@ -110,27 +132,6 @@ const Welcome = () => {
         // Navigate to register page
         navigate('/register');
     };
-
-    // Listen for voice input and select language
-    useEffect(() => {
-        if (!transcript) return;
-
-        const lowerTranscript = transcript.toLowerCase().trim();
-        console.log('Voice input on Welcome:', lowerTranscript);
-
-        // Check each language for matching keywords
-        for (const lang of languages) {
-            const match = lang.voiceKeywords.some(keyword =>
-                lowerTranscript.includes(keyword.toLowerCase())
-            );
-
-            if (match) {
-                console.log('Language matched:', lang.label);
-                handleLanguageSelect(lang.code, lang.label, lang.confirmationMessage);
-                return;
-            }
-        }
-    }, [transcript, languages, handleLanguageSelect]);
 
     return (
         <motion.div
@@ -181,13 +182,14 @@ const Welcome = () => {
                     className="text-base sm:text-lg text-center text-gray-500 mb-4 font-medium"
                     variants={staggerItem}
                 >
-                    Select Your Preferred Language
+                    {getUiText('selectLanguage')}
                 </motion.p>
 
                 {languages.map((lang, index) => (
                     <motion.button
                         key={lang.code}
-                        onClick={() => handleLanguageSelect(lang.code, lang.label, lang.confirmationMessage)}
+                        onClick={() => handleLanguageSelect(lang.code, lang.confirmationMessage)}
+                        aria-label={`Select ${lang.label}`}
                         className={`
                             w-full min-h-[90px] sm:min-h-[100px] p-4 sm:p-5 rounded-3xl
                             bg-gradient-to-br ${lang.gradient}
@@ -214,7 +216,7 @@ const Welcome = () => {
                         {/* Language Info */}
                         <div className="flex-1 text-left">
                             <div className="text-2xl sm:text-3xl font-bold mb-1">{lang.buttonText}</div>
-                            <div className="text-sm sm:text-base opacity-90">{lang.subtitle}</div>
+                            <div className="text-base sm:text-lg opacity-90">{lang.subtitle}</div>
                         </div>
 
                         {/* Arrow Icon */}
@@ -243,7 +245,7 @@ const Welcome = () => {
                     transition={{ delay: 0.8 }}
                 >
                     <span className="text-xl">🎙️</span>
-                    <span className="text-sm">Or tap the mic and say your language</span>
+                    <span className="text-base">{getUiText('voiceHint')}</span>
                 </motion.div>
             </motion.div>
 
@@ -287,7 +289,7 @@ const Welcome = () => {
                             animate={{ opacity: [1, 0.7, 1] }}
                             transition={{ duration: 1.5, repeat: Infinity }}
                         >
-                            Listening...
+                            {getUiText('listening')}
                         </motion.p>
 
                         {/* Language Options */}

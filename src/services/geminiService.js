@@ -65,6 +65,24 @@ const withTimeout = (promise, ms = API_TIMEOUT_MS) => {
 };
 
 /**
+ * Repair truncated JSON strings returned by the LLM
+ */
+const repairTruncatedJSON = (text) => {
+    try {
+        let repaired = text.trim();
+        const opens = (repaired.match(/\[/g) || []).length;
+        const closes = (repaired.match(/\]/g) || []).length;
+        const braceOpens = (repaired.match(/\{/g) || []).length;
+        const braceCloses = (repaired.match(/\}/g) || []).length;
+        for (let i = 0; i < braceOpens - braceCloses; i++) repaired += '}';
+        for (let i = 0; i < opens - closes; i++) repaired += ']';
+        return repaired;
+    } catch (e) {
+        return text;
+    }
+};
+
+/**
  * Parse frequency codes to actual time slots
  * Handles: OD, BD, TDS, QID, 1-1-1, 1-0-1, etc.
  */
@@ -193,7 +211,7 @@ OUTPUT FORMAT - Return RAW JSON only (no markdown, no backticks, no preamble):
 RULES:
 1. Return ONLY the JSON object - no text before or after
 2. Do NOT wrap in markdown code blocks
-3. duration_days: Use 5 as default if not specified
+3. duration_days: Use 30 as default for chronic/maintenance meds, 5 only for clearly acute conditions like fever/pain if not specified
 4. confidence: 80-100 for clear, 50-79 for partial, skip below 50
 5. Extract ALL medicines that are clearly readable`;
 
@@ -224,8 +242,8 @@ RULES:
             // Clean up response - remove markdown code blocks if present
             text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-            // Parse JSON
-            const rawData = JSON.parse(text);
+            // Parse JSON with repair logic
+            const rawData = JSON.parse(repairTruncatedJSON(text));
 
             console.log(`✅ Success with model: ${modelName}`);
             console.log('📋 Raw Gemini extraction:', rawData);
@@ -285,7 +303,7 @@ RULES:
                     timing: frequencyInfo.times,
                     timesPerDay: frequencyInfo.timesPerDay,
                     reminderTimes: frequencyInfo.times.map(t => DEFAULT_TIMES[t]),
-                    durationDays: med.duration_days || 5,
+                    durationDays: med.duration_days || 30,
                     withFood: med.with_food ?? true,
                     visualType: dbMedicine?.visualType || med.visual_type || 'Tablet',
                     visualColor: dbMedicine?.visualColor || med.visual_color || 'White',
@@ -387,21 +405,24 @@ Return ONLY valid JSON, no explanation.`;
             console.log(`🔍 Analyzing medicine photo with: ${modelName}`);
             const model = genAI.getGenerativeModel({ model: modelName });
 
-            const result = await model.generateContent([
-                prompt,
-                {
-                    inlineData: {
-                        mimeType,
-                        data: base64Image
+            const result = await withTimeout(
+                model.generateContent([
+                    prompt,
+                    {
+                        inlineData: {
+                            mimeType,
+                            data: base64Image
+                        }
                     }
-                }
-            ]);
+                ]),
+                API_TIMEOUT_MS
+            );
 
             const response = await result.response;
             let text = response.text();
             text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-            const data = JSON.parse(text);
+            const data = JSON.parse(repairTruncatedJSON(text));
             console.log('💊 Medicine photo analysis:', data);
 
             return {
@@ -452,7 +473,7 @@ export const verifyMedicinePhoto = async (base64Image, mimeType = 'image/jpeg', 
 
     const prompt = `You are a CONSERVATIVE medicine identification system for elderly users.
 
-TASK: Identify the medicine in this photo by reading TEXT on the packaging/strip/bottle.
+TASK: Identify the medicine in this photo by reading TEXT on the packaging/strip/bottle. The packaging may contain text in Hindi, English, or both. Read all text visible regardless of language.
 
 ═══════════════════════════════════════════════════════════════════════════════
 STRICT ANTI-HALLUCINATION RULES:
@@ -511,7 +532,7 @@ Return ONLY valid JSON, no explanation.`;
             let text = response.text();
             text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-            const data = JSON.parse(text);
+            const data = JSON.parse(repairTruncatedJSON(text));
             console.log('🔍 Blind verification result:', data);
 
             // If not readable, return early with retry suggestion
@@ -629,35 +650,52 @@ export const generateVoiceSummary = (medicines, language = 'hi-IN') => {
             morning: 'for morning',
             afternoon: 'for afternoon',
             evening: 'for evening',
-            night: 'for night'
+            night: 'for night',
+            ordinals: ['First', 'Second', 'Third']
         },
         'hi-IN': {
             found: `मुझे ${count} दवाई${count > 1 ? 'यां' : ''} मिली${count > 1 ? 'ं' : ''}।`,
             morning: 'सुबह के लिए',
             afternoon: 'दोपहर के लिए',
             evening: 'शाम के लिए',
-            night: 'रात के लिए'
+            night: 'रात के लिए',
+            ordinals: ['पहली', 'दूसरी', 'तीसरी']
         },
         'mr-IN': {
             found: `मला ${count} औषध${count > 1 ? 'े' : ''} सापडल${count > 1 ? 'ी' : 'े'}.`,
             morning: 'सकाळसाठी',
             afternoon: 'दुपारसाठी',
             evening: 'संध्याकाळसाठी',
-            night: 'रात्रीसाठी'
+            night: 'रात्रीसाठी',
+            ordinals: ['पहिले', 'दुसरे', 'तिसरे']
         }
     };
 
     const t = templates[language] || templates['hi-IN'];
     let summary = t.found + ' ';
 
-    medicines.forEach((med, i) => {
+    // Cap at 3 medicines to avoid overwhelmingly long TTS
+    const medsToAnnounce = medicines.slice(0, 3);
+    
+    medsToAnnounce.forEach((med, i) => {
         const timing = med.timing?.[0] || 'morning';
         const timingText = t[timing] || t.morning;
-        summary += `${med.name} ${timingText}`;
-        if (i < medicines.length - 1) summary += ', ';
+        const ordinal = t.ordinals[i] || '';
+        
+        const dosage = med.dosage ? `${med.dosage} ` : '';
+        const foodPrefix = language === 'hi-IN' ? (med.withFood ? 'खाने के बाद' : 'खाली पेट') :
+                           language === 'mr-IN' ? (med.withFood ? 'जेवणानंतर' : 'रिकाम्या पोटी') :
+                           (med.withFood ? 'after food' : 'empty stomach');
+
+        summary += `${ordinal}, ${med.name} ${dosage}${timingText} ${foodPrefix}. `;
     });
 
-    summary += '.';
+    if (count > 3) {
+        summary += language === 'hi-IN' ? 'और अन्य दवाइयां भी हैं जिन्हें आप स्क्रीन पर देख सकते हैं।' : 
+                   language === 'mr-IN' ? 'आणि इतर औषधे तुम्ही स्क्रीनवर पाहू शकता.' : 
+                   'And other medicines you can view on screen.';
+    }
+
     return summary;
 };
 
