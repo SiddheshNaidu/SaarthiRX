@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-gradient-start: #FDFCF0;
+  --bg-gradient-end: #FFF5E6;
+  --primary-orange: #FF8C00;
+  --text-dark: #2D3748;
+  --text-light: #4A5568;
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  body {
+    @apply m-0 antialiased;
+    font-family: 'Inter', 'Quicksand', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 24px;
+    line-height: 1.6;
+    color: var(--text-dark);
+  }
+
+  #root {
+    @apply min-h-screen w-full;
+  }
+
+  *:focus-visible {
+    @apply outline-4 outline-primary outline-offset-4;
+  }
+
+  img {
+    @apply max-w-full h-auto;
+  }
+}
