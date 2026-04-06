@@ -1,22 +1,17 @@
-/**
- * BottomNav — Elder-first dual action bar
- *
- * Simplified to only:
- * - Speaker (repeat current page guidance)
- * - Mic (start/stop listening)
- */
-
-import { useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
-import { triggerHaptic } from '../utils/haptics';
+import { triggerHaptic, triggerAction } from '../utils/haptics';
+import { HomeIcon, PillIcon, CameraIcon, ClipboardIcon, MicIcon, SpeakerIcon } from './Icons';
+import './BottomNav.css';
 
 const HIDDEN_ROUTES = ['/', '/login', '/register'];
 const ALARM_PREFIXES = ['/alarm', '/reminder/alert'];
 
 const BottomNav = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { language } = useApp();
     const { isListening, isSpeaking, startListening, stopListening, repeatContent } = useVoice();
 
@@ -42,84 +37,195 @@ const BottomNav = () => {
         }
     };
 
+    const handleTabClick = (path) => {
+        triggerAction();
+        navigate(path);
+    };
+
     const labels = {
         speaker: { 'en-US': 'Repeat', 'hi-IN': 'दोहराएं', 'mr-IN': 'पुन्हा' },
         mic: { 'en-US': 'Speak', 'hi-IN': 'बोलें', 'mr-IN': 'बोला' },
+        home: { 'en-US': 'Home', 'hi-IN': 'होम', 'mr-IN': 'होम' },
+        medicines: { 'en-US': 'Pills', 'hi-IN': 'दवाएं', 'mr-IN': 'औषधे' },
+        scan: { 'en-US': 'Scan', 'hi-IN': 'स्कैन', 'mr-IN': 'स्कॅन' },
+        history: { 'en-US': 'History', 'hi-IN': 'इतिहास', 'mr-IN': 'इतिहास' }
     };
 
     const getLabel = (key) => labels[key]?.[language] || labels[key]?.['en-US'];
 
+    const tabs = [
+        { id: 'home', icon: HomeIcon, path: '/dashboard', label: getLabel('home') },
+        { id: 'medicines', icon: PillIcon, path: '/medicines', label: getLabel('medicines') },
+        { id: 'scan', icon: CameraIcon, path: '/scan', label: getLabel('scan') },
+        { id: 'history', icon: ClipboardIcon, path: '/history', label: getLabel('history') },
+    ];
+
     return (
-        <div
-            className="fixed left-1/2 -translate-x-1/2 bottom-4 z-40 pointer-events-none w-full max-w-mobile px-4"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-            data-global-voice-controls="true"
-        >
-            <div className="flex items-center justify-center gap-8 mb-4">
+        <>
+            {/* Screen-wide visual feedback for Voice/Speech */}
+            <AnimatePresence>
+                {isListening && (
+                    <motion.div
+                        key="listening-glow"
+                        className="fixed inset-0 pointer-events-none z-30 overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        {/* Refined smoother explosion ripple */}
+                        <motion.div
+                            className="absolute rounded-full bg-orange-500/40"
+                            style={{ 
+                                left: 'calc(50% + 60px)', bottom: '152px', 
+                                width: '100vw', height: '100vw', 
+                                x: '-50%', y: '50%' 
+                            }}
+                            initial={{ scale: 0, opacity: 1 }}
+                            animate={{ scale: 3.5, opacity: 0 }}
+                            transition={{ duration: 0.7, ease: "easeOut" }}
+                        />
+                        {/* Ambient pulsing screen vignette */}
+                        <motion.div 
+                            className="absolute inset-0 shadow-[inset_0_0_120px_rgba(249,115,22,0.15)]"
+                            animate={{ opacity: [0.4, 0.8, 0.4] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                        {/* Bottom wave light */}
+                        <motion.div 
+                            className="absolute bottom-0 w-full h-[30vh] bg-gradient-to-t from-orange-500/20 to-transparent"
+                            animate={{ opacity: [0.4, 0.8, 0.4], scaleY: [1, 1.05, 1] }}
+                            style={{ transformOrigin: "bottom" }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                    </motion.div>
+                )}
+                {isSpeaking && (
+                    <motion.div
+                        key="speaking-glow"
+                        className="fixed inset-0 pointer-events-none z-30 overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        {/* Refined smoother explosion ripple */}
+                        <motion.div
+                            className="absolute rounded-full bg-blue-500/40"
+                            style={{ 
+                                left: 'calc(50% - 60px)', bottom: '152px', 
+                                width: '100vw', height: '100vw', 
+                                x: '-50%', y: '50%' 
+                            }}
+                            initial={{ scale: 0, opacity: 1 }}
+                            animate={{ scale: 3.5, opacity: 0 }}
+                            transition={{ duration: 0.7, ease: "easeOut" }}
+                        />
+                        {/* Ambient pulsing screen vignette */}
+                        <motion.div 
+                            className="absolute inset-0 shadow-[inset_0_0_120px_rgba(59,130,246,0.15)]"
+                            animate={{ opacity: [0.4, 0.8, 0.4] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                        {/* Bottom wave light */}
+                        <motion.div 
+                            className="absolute bottom-0 w-full h-[30vh] bg-gradient-to-t from-blue-500/20 to-transparent"
+                            animate={{ opacity: [0.4, 0.8, 0.4], scaleY: [1, 1.05, 1] }}
+                            style={{ transformOrigin: "bottom" }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div
+                className="fixed left-0 right-0 bottom-0 z-40 w-full pointer-events-none flex flex-col items-center"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+                data-global-voice-controls="true"
+            >
+            {/* Dual CTA Voice Controls Floating Above Tabs */}
+            <div className="flex items-center justify-center gap-6 mb-6">
                 <motion.button
                     onClick={handleSpeakerClick}
                     disabled={isSpeaking}
-                    className={`
-                        pointer-events-auto w-24 h-24 rounded-full border-4 border-white flex items-center justify-center
-                        bg-gradient-to-b ${isSpeaking ? 'from-gray-300 to-gray-400 text-gray-500' : 'from-blue-400 to-blue-600 text-white'}
-                    `}
-                    initial={{ y: 0, boxShadow: isSpeaking ? '0px 8px 0px #9ca3af, 0px 15px 25px rgba(0,0,0,0.2)' : '0px 8px 0px #1d4ed8, 0px 15px 25px rgba(0,0,0,0.3)' }}
-                    whileTap={!isSpeaking ? { y: 8, boxShadow: '0px 0px 0px #1d4ed8, 0px 5px 10px rgba(0,0,0,0.4)', scale: 0.95 } : {}}
-                    animate={isSpeaking ? {
-                        y: [0, 2, 0],
-                        boxShadow: [
-                            '0px 8px 0px #9ca3af, 0px 15px 25px rgba(0,0,0,0.2)',
-                            '0px 6px 0px #9ca3af, 0px 12px 20px rgba(0,0,0,0.25)',
-                            '0px 8px 0px #9ca3af, 0px 15px 25px rgba(0,0,0,0.2)'
-                        ]
-                    } : {}}
-                    transition={isSpeaking ? { duration: 1.5, repeat: Infinity } : { type: "spring", stiffness: 400, damping: 25 }}
+                    className={`pointer-events-auto dual-btn-3d dual-btn-blue relative ${isSpeaking ? 'dual-btn-speaking' : ''}`}
                     aria-label={`🔊 ${getLabel('speaker')}`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
-                    <svg className="w-9 h-9" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                    </svg>
+                    {isSpeaking && (
+                        <motion.div 
+                            className="absolute inset-0 rounded-full border-[3px] border-blue-200 z-0"
+                            initial={{ scale: 1, opacity: 0.8 }}
+                            animate={{ scale: 1.6, opacity: 0 }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                        />
+                    )}
+                    <div className="dual-btn-content relative z-10">
+                        <motion.div
+                            animate={isSpeaking ? { scale: [1, 1.3, 1], filter: ["drop-shadow(0px 0px 0px rgba(255,255,255,0))", "drop-shadow(0px 0px 8px rgba(255,255,255,0.8))", "drop-shadow(0px 0px 0px rgba(255,255,255,0))"] } : {}}
+                            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            <SpeakerIcon className="dual-btn-icon" />
+                        </motion.div>
+                        <span className="dual-btn-caption">{getLabel('speaker')}</span>
+                    </div>
                 </motion.button>
 
                 <motion.button
                     onClick={handleMicClick}
                     disabled={isSpeaking}
-                    className={`
-                        pointer-events-auto w-24 h-24 rounded-full border-4 border-white flex items-center justify-center relative overflow-hidden
-                        bg-gradient-to-b ${isSpeaking ? 'from-gray-300 to-gray-400 text-gray-500' : 'from-orange-400 to-orange-600 text-white'}
-                    `}
-                    initial={{ y: 0, boxShadow: isSpeaking ? '0px 8px 0px #9ca3af, 0px 15px 25px rgba(0,0,0,0.2)' : '0px 8px 0px #c2410c, 0px 15px 25px rgba(0,0,0,0.3)' }}
-                    whileTap={!isSpeaking ? { y: 8, boxShadow: '0px 0px 0px #c2410c, 0px 5px 10px rgba(0,0,0,0.4)', scale: 0.95 } : {}}
-                    animate={isListening ? {
-                        y: [0, 4, 0],
-                        boxShadow: [
-                            '0px 8px 0px #c2410c, 0px 15px 25px rgba(255,140,0,0.5)',
-                            '0px 4px 0px #c2410c, 0 0 0 20px rgba(255,140,0,0)',
-                            '0px 8px 0px #c2410c, 0px 15px 25px rgba(255,140,0,0.5)',
-                        ]
-                    } : {}}
-                    transition={isListening ? { duration: 1.4, repeat: Infinity } : { type: "spring", stiffness: 400, damping: 25 }}
+                    className={`pointer-events-auto dual-btn-3d dual-btn-orange relative ${isListening ? 'dual-btn-listening' : ''}`}
                     aria-label={isListening ? `🎙️ ${getLabel('mic')} stop` : `🎙️ ${getLabel('mic')}`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.9 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                     {isListening && (
-                        <div className="absolute inset-0 flex items-center justify-center space-x-0.5" aria-hidden="true">
-                            {[...Array(4)].map((_, i) => (
-                                <motion.div
-                                    key={i}
-                                    className="w-1 bg-white/50 rounded-full"
-                                    animate={{ height: ['25%', '70%', '40%', '70%', '25%'] }}
-                                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }}
-                                />
-                            ))}
-                        </div>
+                        <motion.div 
+                            className="absolute inset-0 rounded-full border-[3px] border-orange-200 z-0"
+                            initial={{ scale: 1, opacity: 0.8 }}
+                            animate={{ scale: 1.6, opacity: 0 }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+                        />
                     )}
-                    <svg className="w-9 h-9 relative z-10" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                    </svg>
+                    <div className="dual-btn-content relative z-10">
+                        <motion.div
+                            animate={isListening ? { scale: [1, 1.3, 1], filter: ["drop-shadow(0px 0px 0px rgba(255,255,255,0))", "drop-shadow(0px 0px 8px rgba(255,255,255,0.8))", "drop-shadow(0px 0px 0px rgba(255,255,255,0))"] } : {}}
+                            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            <MicIcon className="dual-btn-icon" />
+                        </motion.div>
+                        <span className="dual-btn-caption">{getLabel('mic')}</span>
+                    </div>
                 </motion.button>
             </div>
+
+            {/* Bottom 4 Tabs */}
+            <div className="pointer-events-auto w-full max-w-mobile h-[80px] bg-white border-t border-gray-200 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex items-center justify-between px-6 rounded-t-3xl">
+                {tabs.map((tab) => {
+                    const isActive = location.pathname.startsWith(tab.path);
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => handleTabClick(tab.path)}
+                            className="flex flex-col items-center justify-center gap-1 min-w-[64px]"
+                            aria-label={tab.label}
+                        >
+                            <Icon className={`w-7 h-7 ${isActive ? 'text-primary' : 'text-gray-400'}`} />
+                            <span className={`text-[11px] font-semibold ${isActive ? 'text-primary' : 'text-gray-500'}`}>
+                                {tab.label}
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
         </div>
+        </>
     );
 };
 

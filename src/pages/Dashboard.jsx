@@ -8,13 +8,16 @@ import { cardHover, staggerContainer, staggerItem } from '../utils/animations';
 import { getPrompt } from '../utils/translations';
 import { CameraIcon, PillIcon, BellIcon, SearchIcon, ClipboardIcon } from '../components/Icons';
 
+// Session-level key: resets when browser tab closes (fresh login = new session)
+const SESSION_GREETED_KEY = 'saarthi_dashboard_greeted';
+
 const Dashboard = () => {
     const navigate = useNavigate();
     const { language, setCurrentPageContent, user } = useApp();
     const { speak, startListening, transcript, resetTranscript, isListening } = useVoice();
 
-    // One-shot flag to prevent audio loop
-    const hasAnnounced = useRef(false);
+    // Tracks if we've already mounted once (prevents StrictMode double-fire)
+    const mountedRef = useRef(false);
 
     // Use user from context (synced with Firestore)
     const userName = user?.name || 'Friend';
@@ -27,34 +30,66 @@ const Dashboard = () => {
 
     const greeting = greetings[language] || greetings['en-US'];
 
-    // Ultra-short greeting on mount - gives immediate control to user
+    // ─── FIRST-VISIT GREETING ────────────────────────────────────────────────
+    // Speaks once per login session. sessionStorage resets on tab close / new login.
+    // Subsequent navigation back to dashboard is silent.
     useEffect(() => {
-        if (!hasAnnounced.current) {
-            hasAnnounced.current = true;
+        if (mountedRef.current) return; // Already ran in this mount cycle
+        mountedRef.current = true;
 
-            setCurrentPageContent(getPrompt('DASHBOARD_ANNOUNCE', language));
+        // Check if we already greeted in this browser session
+        const alreadyGreeted = sessionStorage.getItem(SESSION_GREETED_KEY) === 'true';
+        if (alreadyGreeted) return; // Silent return — not the first visit
 
-            // Just say "Namaste" - ultra short (< 1 second)
-            const shortGreeting = {
-                'en-US': 'Namaste.',
-                'hi-IN': 'नमस्ते।',
-                'mr-IN': 'नमस्कार.'
+        // Mark as greeted for the rest of this session
+        sessionStorage.setItem(SESSION_GREETED_KEY, 'true');
+
+        // Build the full first-visit message: greeting + command list
+        const firstVisitMessage = {
+            'en-US':
+                `Namaste ${userName}! Welcome to SaarthiRx. ` +
+                `You can say: Scan, to read a prescription. ` +
+                `Medicines, to view your medicines. ` +
+                `Reminders, to manage your reminders. ` +
+                `Help, to hear all commands.`,
+            'hi-IN':
+                `नमस्ते ${userName}! SaarthiRx में आपका स्वागत है। ` +
+                `आप कह सकते हैं: स्कैन, पर्चा पढ़ने के लिए। ` +
+                `दवाई, अपनी दवाइयां देखने के लिए। ` +
+                `रिमाइंडर, अनुस्मारक प्रबंधित करने के लिए। ` +
+                `मदद, सभी कमांड सुनने के लिए।`,
+        };
+
+        const msgToSpeak = firstVisitMessage[language] || firstVisitMessage['en-US'];
+        setCurrentPageContent(msgToSpeak);
+        speak(msgToSpeak).then(() => {
+            // After first-visit greeting finishes, update speaker button to say short help prompt
+            const helpPrompt = {
+                'en-US': `Namaste ${userName}, how can I help you?`,
+                'hi-IN': `नमस्ते ${userName}, मैं आपकी कैसे मदद कर सकता हूँ?`,
+                'mr-IN': `नमस्कार ${userName}, मी तुम्हाला कशी मदत करू शकतो?`
             };
-            speak(shortGreeting[language] || shortGreeting['en-US']);
+            setCurrentPageContent(helpPrompt[language] || helpPrompt['en-US']);
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps — intentionally run only once per component mount
 
-            // Auto-start mic after 1 second so user can immediately speak
-            setTimeout(() => {
-                if (!isListening) {
-                    try {
-                        startListening();
-                        console.log('🎙️ Auto-started mic for voice control');
-                    } catch (e) {
-                        console.log('Mic auto-start skipped');
-                    }
-                }
-            }, 1000);
+    // ─── SET SPEAKER CONTENT on return visits ────────────────────────────────
+    // If user navigates back (already greeted), silently set what the speaker
+    // button should say when tapped.
+    useEffect(() => {
+        const alreadyGreeted = sessionStorage.getItem(SESSION_GREETED_KEY) === 'true';
+        if (alreadyGreeted) {
+            const helpPrompt = {
+                'en-US': `Namaste ${userName}, how can I help you?`,
+                'hi-IN': `नमस्ते ${userName}, मैं आपकी कैसे मदद कर सकता हूँ?`,
+                'mr-IN': `नमस्कार ${userName}, मी तुम्हाला कशी मदत करू शकतो?`
+            };
+            setCurrentPageContent(helpPrompt[language] || helpPrompt['en-US']);
         }
-    }, [language, setCurrentPageContent, speak, startListening, isListening]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [language, userName]);
+
 
     // ═══════════════════════════════════════════════════════════════════════
     // DASHBOARD COMMAND DICTIONARY - Voice Command Center
@@ -142,14 +177,15 @@ const Dashboard = () => {
         }
     };
 
-    // Handle repeat (speaker button) - re-announces greeting
+    // ─── SPEAKER BUTTON TAP ──────────────────────────────────────────────────
+    // Not the first-visit full tour — just a short helpful prompt.
     const handleRepeat = useCallback(() => {
-        const shortGreeting = {
-            'en-US': `Hello ${userName}. How can I help you today?`,
-            'hi-IN': `नमस्ते ${userName}। आज मैं आपकी कैसे मदद कर सकता हूँ?`,
-            'mr-IN': `नमस्कार ${userName}. आज मी तुम्हाला कशी मदत करू शकतो?`
+        const helpPrompt = {
+            'en-US': `Namaste ${userName}, how can I help you?`,
+            'hi-IN': `नमस्ते ${userName}, मैं आपकी कैसे मदद कर सकता हूँ?`,
+            'mr-IN': `नमस्कार ${userName}, मी तुम्हाला कशी मदत करू शकतो?`
         };
-        speak(shortGreeting[language] || shortGreeting['en-US']);
+        speak(helpPrompt[language] || helpPrompt['en-US']);
     }, [speak, language, userName]);
 
     return (

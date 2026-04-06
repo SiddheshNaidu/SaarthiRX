@@ -85,7 +85,10 @@ export const AppProvider = ({ children }) => {
         setUserState(null);
         setFirebaseUser(null);
         localStorage.removeItem('saarthi_user');
+        // Reset first-visit greeting so next login triggers it again
+        sessionStorage.removeItem('saarthi_dashboard_greeted');
     };
+
 
     // Get language display name
     const getLanguageName = () => {

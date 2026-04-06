@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
 import { useVoiceButler } from '../context/VoiceButlerContext';
-import { verifyMedicinePhoto } from '../services/geminiService';
+import { verifyMedicinePhoto } from '../services/groqService';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl } from '../utils/imageUtils';
 

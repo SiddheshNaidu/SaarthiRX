@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { correctMedicineName } from '../data/medicineDatabase';
+import { preprocessPrescriptionImage, preprocessMedicinePhoto } from '../utils/imageProcessor';
 
 // Initialize Gemini with API key validation
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -157,6 +158,17 @@ const DEFAULT_TIMES = {
  * @returns {Promise<object>} Extracted medicine data with parsed frequencies
  */
 export const analyzePrescription = async (base64Image, mimeType = 'image/jpeg') => {
+    // ── Step 0: Pre-process image for maximum OCR accuracy ──────────────────
+    // Auto-level → brightness/contrast boost → unsharp mask → grayscale
+    console.log('🖼️ Starting image pre-processing pipeline...');
+    const preprocessed = await preprocessPrescriptionImage(base64Image, mimeType);
+    const imageData    = preprocessed.base64;
+    const imageMime    = preprocessed.mimeType;
+    if (preprocessed.wasProcessed) {
+        console.log('✅ Pre-processing done:', preprocessed.diagnostics.pipeline,
+            `(${preprocessed.diagnostics.processingTimeMs}ms)`);
+    }
+
     // Models to try in order of preference
     // NOTE: Model names available for this API key (as per API query)
     const MODELS_TO_TRY = [
@@ -228,8 +240,8 @@ RULES:
                     prompt,
                     {
                         inlineData: {
-                            mimeType,
-                            data: base64Image
+                            mimeType: imageMime,
+                            data: imageData          // pre-processed image
                         }
                     }
                 ]),
@@ -373,6 +385,11 @@ RULES:
  * @returns {Promise<object>} Visual details and expiry information
  */
 export const analyzeMedicinePhoto = async (base64Image, mimeType = 'image/jpeg', expectedMedicine = null) => {
+    // ── Pre-process: enhance for packaging text readability (keep color) ────
+    const preprocessed = await preprocessMedicinePhoto(base64Image, mimeType);
+    const imageData    = preprocessed.base64;
+    const imageMime    = preprocessed.mimeType;
+
     // Use available model names for this API key
     const MODELS_TO_TRY = [
         'gemini-2.0-flash',       // Primary: Latest flash with vision
@@ -410,8 +427,8 @@ Return ONLY valid JSON, no explanation.`;
                     prompt,
                     {
                         inlineData: {
-                            mimeType,
-                            data: base64Image
+                            mimeType: imageMime,
+                            data: imageData
                         }
                     }
                 ]),
@@ -463,6 +480,11 @@ Return ONLY valid JSON, no explanation.`;
  * @returns {object} Match result with verification status
  */
 export const verifyMedicinePhoto = async (base64Image, mimeType = 'image/jpeg', prescriptionMedicines = []) => {
+    // ── Pre-process: enhance for packaging text readability (keep color) ────
+    const preprocessed = await preprocessMedicinePhoto(base64Image, mimeType);
+    const imageData    = preprocessed.base64;
+    const imageMime    = preprocessed.mimeType;
+
     // Use available model names for this API key
     const MODELS_TO_TRY = [
         'gemini-2.0-flash',       // Primary: Latest flash with vision
@@ -520,8 +542,8 @@ Return ONLY valid JSON, no explanation.`;
                     prompt,
                     {
                         inlineData: {
-                            mimeType,
-                            data: base64Image
+                            mimeType: imageMime,
+                            data: imageData
                         }
                     }
                 ]),

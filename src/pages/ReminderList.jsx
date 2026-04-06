@@ -343,7 +343,7 @@ const ReminderList = () => {
                                                 e.stopPropagation();
                                                 setDeleteConfirm(reminder);
                                             }}
-                                            className="text-red-400 hover:text-red-600 p-3 sm:p-4 text-xl sm:text-2xl hover:bg-red-50 rounded-xl transition-colors mt-2"
+                                            className="text-red-400 hover:text-red-600 min-w-[48px] min-h-[48px] p-3 sm:p-4 text-xl sm:text-2xl hover:bg-red-50 rounded-xl transition-colors mt-2 flex items-center justify-center"
                                             whileTap={{ scale: 0.9 }}
                                             aria-label={`${t.deleteConfirm} ${reminder.medicineName}`}
                                         >
@@ -360,7 +360,7 @@ const ReminderList = () => {
             {/* Add Button - Above Mic, Centered, Simple */}
             <motion.button
                 onClick={handleAdd}
-                className="fixed bottom-32 inset-x-0 mx-auto w-fit bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-semibold text-lg shadow-md flex items-center gap-2 z-40"
+                className="fixed bottom-48 inset-x-0 mx-auto w-fit bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-semibold text-lg shadow-md flex items-center gap-2 z-40"
                 whileTap={{ scale: 0.97 }}
                 aria-label={t.addNew}
             >

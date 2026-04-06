@@ -11,7 +11,7 @@ import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUtils';
-import { verifyMedicinePhoto } from '../services/geminiService';
+import { verifyMedicinePhoto } from '../services/groqService';
 import { findBestMedicineMatch } from '../data/medicineDatabase';
 
 
