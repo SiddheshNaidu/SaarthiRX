@@ -134,6 +134,15 @@ export const sendOtp = async (phoneNumber) => {
             console.error('   Go to: Firebase Console → Authentication → Settings → Authorized domains');
         }
 
+        if (error.code === 'auth/configuration-not-found') {
+            console.error('🚨 CRITICAL: Phone Authentication is not enabled in Firebase Console!');
+            console.error('   Fix checklist:');
+            console.error('   1. Firebase Console → Authentication → Sign-in method → Phone → Enable');
+            console.error('   2. Add your domain to: Authentication → Settings → Authorized domains');
+            console.error('   3. Fill in .env with real Firebase values (not placeholders)');
+            console.error('   4. Add all VITE_FIREBASE_* vars to Vercel → Settings → Environment Variables');
+        }
+
         // 4. SMART ERROR HANDLING: Only destroy verifier on critical errors
         // If it's just a network timeout, keeping the verifier is safer for retry
         if (error.code !== 'auth/network-request-failed') {
@@ -245,7 +254,8 @@ export const getAuthErrorMessage = (error, language = 'hi-IN') => {
         'auth/network-request-failed': 'ERR_NETWORK',
         'auth/quota-exceeded': 'ERR_NETWORK',
         'auth/missing-app-credential': 'ERR_GENERIC',
-        'auth/invalid-app-credential': 'ERR_CONFIG', // New: Config error
+        'auth/invalid-app-credential': 'ERR_CONFIG',
+        'auth/configuration-not-found': 'ERR_CONFIG', // Phone Auth not enabled in Firebase Console
         'auth/too-many-requests': 'ERR_TOO_MANY',
         'default': 'ERR_GENERIC'
     };

@@ -273,12 +273,13 @@ export const VoiceProvider = ({ children }) => {
                 setIsSpeaking(false);
                 if (event.error === 'not-allowed') {
                     console.warn('⚠️ Speech blocked by browser autoplay policy. User interaction required.');
-                    resolve(); // Resolve to let the app continue silently
+                } else if (event.error === 'interrupted' || event.error === 'canceled') {
+                    // This is expected when we call cancel() programmatically
+                    // We don't need to log this as an error
                 } else {
                     console.error('Speech synthesis error:', event);
-                    // reject(event); // Don't reject to avoid unhandled promise crashes
-                    resolve(); // Just resolve to keep flow moving
                 }
+                resolve(); // Just resolve to keep flow moving
             };
 
             synthRef.current.speak(utterance);
