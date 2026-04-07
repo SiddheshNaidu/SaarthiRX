@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * SVG Icon Components — Lucide-style inline SVGs
  * Replaces emoji usage across the app (ui-ux-pro-max rule: "Use SVG icons, not emojis")

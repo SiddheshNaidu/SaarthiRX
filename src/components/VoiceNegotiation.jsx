@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * VoiceNegotiation Component
  * Handles the voice confirmation loop after prescription scan

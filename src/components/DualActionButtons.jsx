@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useVoice } from '../context/VoiceContext';
 import { triggerHaptic } from '../utils/haptics';

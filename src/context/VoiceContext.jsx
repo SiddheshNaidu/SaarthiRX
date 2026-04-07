@@ -1,3 +1,4 @@
+import React from 'react';
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';

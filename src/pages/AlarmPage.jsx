@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * AlarmPage - Full-Screen Medication Alarm
  * "Lock Screen" style emergency overlay for elderly users

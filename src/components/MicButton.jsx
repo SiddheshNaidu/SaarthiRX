@@ -1,3 +1,4 @@
+import React from 'react';
 import { triggerHaptic } from '../utils/haptics';
 
 const MicButton = ({ onClick, isListening }) => {

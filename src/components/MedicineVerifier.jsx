@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * MedicineVerifier Component
  * "Check My Medicine" feature - allows users to photograph their actual pills
@@ -8,7 +9,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
-import { analyzeMedicinePhoto } from '../services/groqService';
+import { analyzeMedicinePhoto } from '../services/geminiService';
 import { updateMedicineVisual } from '../services/medicationService';
 import { compressImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUtils';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';

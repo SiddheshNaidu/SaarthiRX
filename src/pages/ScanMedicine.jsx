@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * ScanMedicine Page
  * Scan actual medicine to verify it matches prescription
@@ -11,7 +12,7 @@ import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUtils';
-import { verifyMedicinePhoto } from '../services/groqService';
+import { verifyMedicinePhoto } from '../services/geminiService';
 import { findBestMedicineMatch } from '../data/medicineDatabase';
 
 

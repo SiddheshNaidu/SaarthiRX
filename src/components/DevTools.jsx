@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { loadDemoData, clearDemoData, loadDemoPrescription, startDemoScan } from '../utils/demoData';

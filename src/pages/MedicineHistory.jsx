@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * MedicineHistory Page
  * Shows history of taken/skipped medicines for tracking adherence

@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * VoiceNavigation - Global Voice Command Handler
  * Mounted at Root Level to listen on every page

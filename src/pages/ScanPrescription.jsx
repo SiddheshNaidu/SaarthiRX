@@ -1,3 +1,4 @@
+import React from 'react';
 /**
  * ScanPrescription Page
  * Elder-friendly prescription capture with Gemini AI analysis
@@ -11,7 +12,7 @@ import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl, clearImageData, validateImageFile } from '../utils/imageUtils';
-import { analyzePrescription, checkDrugInteractions, generateVoiceSummary, generateConflictWarning } from '../services/groqService';
+import { analyzePrescription, checkDrugInteractions, generateVoiceSummary, generateConflictWarning } from '../services/geminiService';
 import { saveMedicines } from '../services/medicationService';
 import { createRemindersFromPrescription } from '../services/reminderService';
 import { getPrompt } from '../utils/translations';
