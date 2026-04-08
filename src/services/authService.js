@@ -1,64 +1,73 @@
 import {
-    RecaptchaVerifier,
-    signInWithPhoneNumber,
-    signOut
-} from 'firebase/auth';
-import { auth } from '../firebase/firebase';
-import { getPrompt } from '../utils/translations';
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  signOut,
+} from "firebase/auth";
+import { auth } from "../firebase/firebase";
+import { getPrompt } from "../utils/translations";
 
 // Test number for development
-const TEST_NUMBER = '+919999888877';
+const TEST_NUMBER = "+919999888877";
 
 // Store confirmation result globally for OTP verification
 let confirmationResult = null;
 
 /**
- * Setup invisible reCAPTCHA verifier (Singleton Pattern)
- * FIX: Prevents "reCAPTCHA already rendered" error
- * @param {string} containerId - ID of the container element for reCAPTCHA
- * @returns {RecaptchaVerifier} The reCAPTCHA verifier instance
+ * Setup invisible reCAPTCHA verifier.
+ * ALWAYS tears down any existing verifier and creates a fresh one.
+ * This avoids the "reCAPTCHA client element has been removed" error caused
+ * by React unmounting and remounting the container div between navigations.
+ * @param {string} containerId - ID of the container element
+ * @returns {RecaptchaVerifier|null}
  */
 export const setupRecaptcha = (containerId) => {
-    // 1. Check if the DOM element actually exists
-    const container = document.getElementById(containerId);
-    if (!container) {
-        console.warn(`Recaptcha container #${containerId} not found in DOM.`);
-        return null;
-    }
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.warn(`Recaptcha container #${containerId} not found in DOM.`);
+    return null;
+  }
 
-    // MOCK MODE: Bypass recaptcha when auth is null (missing .env keys)
-    if (!auth && import.meta.env.DEV) {
-        console.warn('🔥 Mock Auth Mode: Skipping reCAPTCHA setup because Firebase config is missing');
-        window.recaptchaVerifier = { clear: () => {} };
-        return window.recaptchaVerifier;
-    }
+  // MOCK MODE
+  if (!auth && import.meta.env.DEV) {
+    console.warn('🔥 Mock Auth Mode: Skipping reCAPTCHA');
+    window.recaptchaVerifier = { clear: () => {} };
+    return window.recaptchaVerifier;
+  }
 
-    // 2. SINGLETON: If it already exists, return it. DO NOT create a new one.
-    if (window.recaptchaVerifier) {
-        console.log('♻️ Reusing existing reCAPTCHA verifier');
-        return window.recaptchaVerifier;
-    }
+  // Always tear down existing verifier before creating a new one.
+  // Invisible reCAPTCHA injects its iframe at the BODY level, not inside
+  // the container div — so child-count checks cannot detect staleness.
+  // A fresh verifier every time is the only reliable solution.
+  if (window.recaptchaVerifier) {
+    console.log('🗑️ Tearing down previous reCAPTCHA verifier (always fresh before send)');
+    try { window.recaptchaVerifier.clear(); } catch (_) {}
+    window.recaptchaVerifier = null;
+  }
 
-    try {
-        // 3. Initialize only if null
-        console.log('🔧 Creating new reCAPTCHA verifier');
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-            size: 'invisible',
-            callback: () => {
-                console.log('✅ reCAPTCHA solved - allow signIn');
-            },
-            'expired-callback': () => {
-                console.warn('⏰ reCAPTCHA expired - will reset on next attempt');
-                // Don't clear immediately, let the next sendOtp handle it
-            }
-        });
+  // Clear any leftover captcha iframes injected at body level
+  document.querySelectorAll('.grecaptcha-badge, [id^="rc-anchor"]').forEach(el => {
+    try { el.parentNode?.removeChild(el); } catch (_) {}
+  });
 
-        return window.recaptchaVerifier;
-    } catch (error) {
-        console.error('❌ reCAPTCHA Init Error:', error);
-        return null;
-    }
+  try {
+    console.log('🔧 Creating fresh reCAPTCHA verifier');
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+      size: 'invisible',
+      callback: () => { console.log('✅ reCAPTCHA solved - allow signIn'); },
+      'expired-callback': () => {
+        console.warn('⏰ reCAPTCHA expired');
+        try { window.recaptchaVerifier?.clear(); } catch (_) {}
+        window.recaptchaVerifier = null;
+      },
+    });
+    return window.recaptchaVerifier;
+  } catch (error) {
+    console.error('❌ reCAPTCHA Init Error:', error);
+    window.recaptchaVerifier = null;
+    return null;
+  }
 };
+
 
 /**
  * Send OTP to phone number with Slow Network Buffer
@@ -67,96 +76,109 @@ export const setupRecaptcha = (containerId) => {
  * @returns {Promise<boolean>} True if OTP sent successfully
  */
 export const sendOtp = async (phoneNumber) => {
-    try {
-        // Format phone number with India country code if not present
-        const formattedPhone = phoneNumber.startsWith('+')
-            ? phoneNumber
-            : `+91${phoneNumber}`;
+  try {
+    // Format phone number with India country code if not present
+    const formattedPhone = phoneNumber.startsWith("+")
+      ? phoneNumber
+      : `+91${phoneNumber}`;
 
-        // MOCK MODE: Fake the OTP send if missing keys in dev
-        if (!auth && import.meta.env.DEV) {
-            console.warn(`🔥 Mock Auth Mode: Faking OTP send to ${formattedPhone}`);
-            // Wait to simulate network latency
-            await new Promise(r => setTimeout(r, 1500));
-            
-            confirmationResult = {
-                confirm: async (otp) => {
-                    await new Promise(r => setTimeout(r, 1000));
-                    if (otp === '123456') {
-                        return { user: { uid: `mock_user_${formattedPhone.replace(/\D/g, '')}` } };
-                    }
-                    const err = new Error('Invalid mock code');
-                    err.code = 'auth/invalid-verification-code';
-                    throw err;
-                }
+    // MOCK MODE: Fake the OTP send if missing keys in dev
+    if (!auth && import.meta.env.DEV) {
+      console.warn(`🔥 Mock Auth Mode: Faking OTP send to ${formattedPhone}`);
+      // Wait to simulate network latency
+      await new Promise((r) => setTimeout(r, 1500));
+
+      confirmationResult = {
+        confirm: async (otp) => {
+          await new Promise((r) => setTimeout(r, 1000));
+          if (otp === "123456") {
+            return {
+              user: { uid: `mock_user_${formattedPhone.replace(/\D/g, "")}` },
             };
-            return true;
-        }
-
-        // 1. Ensure verifier exists (Singleton check)
-        if (!window.recaptchaVerifier) {
-            console.log('🔄 reCAPTCHA not found, initializing...');
-            setupRecaptcha('recaptcha-container');
-        }
-
-        const appVerifier = window.recaptchaVerifier;
-
-        if (!appVerifier) {
-            throw new Error('reCAPTCHA not initialized');
-        }
-
-        // DYNAMIC AUTH SETTING:
-        // Enable testing mode ONLY for the specific test number in DEV
-        if (import.meta.env.DEV && formattedPhone === TEST_NUMBER) {
-            auth.settings.appVerificationDisabledForTesting = true;
-            console.log('🔧 Testing mode ENABLED for', formattedPhone);
-        } else {
-            auth.settings.appVerificationDisabledForTesting = false;
-            console.log('📡 Real SMS mode ENABLED for', formattedPhone);
-        }
-
-        // 2. THE BUFFER: Wait 1s for external scripts to load on slow networks
-        console.log('⏳ Waiting for reCAPTCHA scripts to load...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        console.log(`📤 Sending OTP to ${formattedPhone}...`);
-        confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-
-        console.log('✅ OTP sent successfully!');
-        return true;
-
-    } catch (error) {
-        console.error('❌ Error sending OTP:', error.code, error.message);
-
-        // 3. CRITICAL ERROR LOGGING for developer
-        if (error.code === 'auth/invalid-app-credential') {
-            console.error('🚨 CRITICAL: You must add "localhost" to Authorized Domains in Firebase Console!');
-            console.error('   Go to: Firebase Console → Authentication → Settings → Authorized domains');
-        }
-
-        if (error.code === 'auth/configuration-not-found') {
-            console.error('🚨 CRITICAL: Phone Authentication is not enabled in Firebase Console!');
-            console.error('   Fix checklist:');
-            console.error('   1. Firebase Console → Authentication → Sign-in method → Phone → Enable');
-            console.error('   2. Add your domain to: Authentication → Settings → Authorized domains');
-            console.error('   3. Fill in .env with real Firebase values (not placeholders)');
-            console.error('   4. Add all VITE_FIREBASE_* vars to Vercel → Settings → Environment Variables');
-        }
-
-        // 4. SMART ERROR HANDLING: Only destroy verifier on critical errors
-        // If it's just a network timeout, keeping the verifier is safer for retry
-        if (error.code !== 'auth/network-request-failed') {
-            if (window.recaptchaVerifier) {
-                console.log('🧹 Clearing reCAPTCHA due to error');
-                window.recaptchaVerifier.clear();
-                window.recaptchaVerifier = null;
-            }
-        } else {
-            console.log('🌐 Network error - keeping reCAPTCHA for retry');
-        }
-
-        throw error;
+          }
+          const err = new Error("Invalid mock code");
+          err.code = "auth/invalid-verification-code";
+          throw err;
+        },
+      };
+      return true;
     }
+
+    // 1. Always re-validate the reCAPTCHA verifier before each attempt.
+    //    setupRecaptcha() now detects stale verifiers (DOM removed by React)
+    //    and recreates them automatically.
+    const appVerifier = setupRecaptcha("recaptcha-container");
+
+    if (!appVerifier) {
+      throw new Error("reCAPTCHA not initialized — container may be missing from DOM");
+    }
+
+    // DYNAMIC AUTH SETTING:
+    // Enable testing mode ONLY for the specific test number in DEV
+    if (import.meta.env.DEV && formattedPhone === TEST_NUMBER) {
+      auth.settings.appVerificationDisabledForTesting = true;
+      console.log("🔧 Testing mode ENABLED for", formattedPhone);
+    } else {
+      auth.settings.appVerificationDisabledForTesting = false;
+      console.log("📡 Real SMS mode ENABLED for", formattedPhone);
+    }
+
+
+    console.log(`📤 Sending OTP to ${formattedPhone}...`);
+    confirmationResult = await signInWithPhoneNumber(
+      auth,
+      formattedPhone,
+      appVerifier,
+    );
+
+    console.log("✅ OTP sent successfully!");
+    return true;
+  } catch (error) {
+    console.error("❌ Error sending OTP:", error.code, error.message);
+
+    // 3. CRITICAL ERROR LOGGING for developer
+    if (error.code === "auth/invalid-app-credential") {
+      console.error(
+        '🚨 CRITICAL: You must add "localhost" to Authorized Domains in Firebase Console!',
+      );
+      console.error(
+        "   Go to: Firebase Console → Authentication → Settings → Authorized domains",
+      );
+    }
+
+    if (error.code === "auth/configuration-not-found") {
+      console.error(
+        "🚨 CRITICAL: Phone Authentication is not enabled in Firebase Console!",
+      );
+      console.error("   Fix checklist:");
+      console.error(
+        "   1. Firebase Console → Authentication → Sign-in method → Phone → Enable",
+      );
+      console.error(
+        "   2. Add your domain to: Authentication → Settings → Authorized domains",
+      );
+      console.error(
+        "   3. Fill in .env with real Firebase values (not placeholders)",
+      );
+      console.error(
+        "   4. Add all VITE_FIREBASE_* vars to Vercel → Settings → Environment Variables",
+      );
+    }
+
+    // 4. SMART ERROR HANDLING: Only destroy verifier on critical errors
+    // If it's just a network timeout, keeping the verifier is safer for retry
+    if (error.code !== "auth/network-request-failed") {
+      if (window.recaptchaVerifier) {
+        console.log("🧹 Clearing reCAPTCHA due to error");
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
+    } else {
+      console.log("🌐 Network error - keeping reCAPTCHA for retry");
+    }
+
+    throw error;
+  }
 };
 
 /**
@@ -165,19 +187,19 @@ export const sendOtp = async (phoneNumber) => {
  * @returns {Promise<object>} Firebase user object
  */
 export const verifyOtp = async (otp) => {
-    try {
-        if (!confirmationResult) {
-            throw new Error('OTP not sent yet. Please request OTP first.');
-        }
-
-        const result = await confirmationResult.confirm(otp);
-        confirmationResult = null; // Clear after successful verification
-
-        return result.user;
-    } catch (error) {
-        console.error('Error verifying OTP:', error);
-        throw error;
+  try {
+    if (!confirmationResult) {
+      throw new Error("OTP not sent yet. Please request OTP first.");
     }
+
+    const result = await confirmationResult.confirm(otp);
+    confirmationResult = null; // Clear after successful verification
+
+    return result.user;
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    throw error;
+  }
 };
 
 /**
@@ -194,14 +216,14 @@ export const getConfirmationResult = () => confirmationResult;
  * @returns {Promise<object>} Firebase user object
  */
 export const verifyOtpDirect = async (otp) => {
-    const confirmation = getConfirmationResult();
-    if (!confirmation) {
-        throw new Error('No pending OTP verification');
-    }
+  const confirmation = getConfirmationResult();
+  if (!confirmation) {
+    throw new Error("No pending OTP verification");
+  }
 
-    const result = await confirmation.confirm(otp);
-    confirmationResult = null;
-    return result.user;
+  const result = await confirmation.confirm(otp);
+  confirmationResult = null;
+  return result.user;
 };
 
 /**
@@ -209,7 +231,7 @@ export const verifyOtpDirect = async (otp) => {
  * @returns {object|null} Current user or null
  */
 export const getCurrentUser = () => {
-    return auth.currentUser;
+  return auth.currentUser;
 };
 
 /**
@@ -217,23 +239,23 @@ export const getCurrentUser = () => {
  * @returns {Promise<void>}
  */
 export const signOutUser = async () => {
-    try {
-        if (auth) {
-            await signOut(auth);
-        } else {
-            console.log('🔥 Mock Mode: Sign out performed');
-        }
-        
-        confirmationResult = null;
-
-        if (window.recaptchaVerifier) {
-            window.recaptchaVerifier.clear();
-            window.recaptchaVerifier = null;
-        }
-    } catch (error) {
-        console.error('Error signing out:', error);
-        throw error;
+  try {
+    if (auth) {
+      await signOut(auth);
+    } else {
+      console.log("🔥 Mock Mode: Sign out performed");
     }
+
+    confirmationResult = null;
+
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
+    }
+  } catch (error) {
+    console.error("Error signing out:", error);
+    throw error;
+  }
 };
 
 /**
@@ -242,24 +264,33 @@ export const signOutUser = async () => {
  * @param {string} language - Current language code
  * @returns {string} User-friendly error message
  */
-export const getAuthErrorMessage = (error, language = 'hi-IN') => {
-    const code = error.code || 'default';
-    console.error('🔥 Firebase Auth Error Code:', code, error.message);
+export const getAuthErrorMessage = (error, language = "hi-IN") => {
+  const code = error.code || "default";
+  console.error("🔥 Firebase Auth Error Code:", code, error.message);
 
-    // Map Firebase error codes to our translation keys
-    const errorMap = {
-        'auth/invalid-phone-number': 'ERR_INVALID_PHONE',
-        'auth/invalid-verification-code': 'ERR_GENERIC',
-        'auth/code-expired': 'ERR_CODE_EXPIRED',
-        'auth/network-request-failed': 'ERR_NETWORK',
-        'auth/quota-exceeded': 'ERR_NETWORK',
-        'auth/missing-app-credential': 'ERR_GENERIC',
-        'auth/invalid-app-credential': 'ERR_CONFIG',
-        'auth/configuration-not-found': 'ERR_CONFIG', // Phone Auth not enabled in Firebase Console
-        'auth/too-many-requests': 'ERR_TOO_MANY',
-        'default': 'ERR_GENERIC'
-    };
+  // Map Firebase error codes to our translation keys
+  const errorMap = {
+    "auth/invalid-phone-number": "ERR_INVALID_PHONE",
+    "auth/invalid-verification-code": "ERR_INVALID_CODE",
+    "auth/code-expired": "ERR_CODE_EXPIRED",
+    "auth/network-request-failed": "ERR_NETWORK",
+    "auth/quota-exceeded": "ERR_NETWORK",
+    "auth/missing-app-credential": "ERR_GENERIC",
+    "auth/invalid-app-credential": "ERR_CONFIG",
+    "auth/configuration-not-found": "ERR_CONFIG", // Phone Auth not enabled in Firebase Console
+    "auth/too-many-requests": "ERR_TOO_MANY",
+    default: "ERR_GENERIC",
+  };
 
-    const promptKey = errorMap[code] || 'ERR_GENERIC';
-    return getPrompt(promptKey, language);
+  const promptKey = errorMap[code] || "ERR_GENERIC";
+  return getPrompt(promptKey, language);
+};
+
+/**
+ * Reset the pending confirmation result.
+ * Call this on component unmount to prevent stale OTP state
+ * after the user navigates away from the Register page.
+ */
+export const resetConfirmationResult = () => {
+  confirmationResult = null;
 };

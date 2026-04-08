@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
@@ -9,7 +9,7 @@ import { validateIndianPhone } from '../utils/phoneValidation';
 import { parseSpokenAge, parseSpokenPhone } from '../utils/numberParser';
 import { slideUpTransition } from '../utils/animations';
 import DualActionButtons from '../components/DualActionButtons';
-import { setupRecaptcha, sendOtp, verifyOtp, getAuthErrorMessage } from '../services/authService';
+import { setupRecaptcha, sendOtp, verifyOtp, getAuthErrorMessage, resetConfirmationResult } from '../services/authService';
 import { getUserFromFirestore, saveUserToFirestore, isProfileComplete } from '../services/userService';
 
 // Elder-friendly UI translations
@@ -82,17 +82,18 @@ const questions = [
 
 const Register = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { language, saveUser, setLanguage } = useApp();
-    const { transcript, resetTranscript, isListening, isSpeaking, speak, stopListening } = useVoice();
+    const { transcript, resetTranscript, isListening, isSpeaking, speak, stopListening, setInputType } = useVoice();
 
-    const [currentQuestion, setCurrentQuestion] = useState(0);
-    const [answers, setAnswers] = useState({});
+    const [currentQuestion, setCurrentQuestion] = useState(location.state?.phoneVerified ? 2 : 0);
+    const [answers, setAnswers] = useState(location.state?.phone ? { phone: location.state.phone } : {});
     const [tempAnswer, setTempAnswer] = useState('');
     const [validationError, setValidationError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [isNewUser, setIsNewUser] = useState(true);
-    const [firebaseUser, setFirebaseUser] = useState(null);
+    const [firebaseUser, setFirebaseUser] = useState(location.state?.uid ? { uid: location.state.uid } : null);
 
     const hasSpokenRef = useRef(false);
     const recaptchaInitialized = useRef(false);
@@ -107,12 +108,27 @@ const Register = () => {
     const question = activeQuestions[currentQuestion];
     const questionText = question?.text[language] || question?.text['en-US'];
 
+    // Set input type for voice recognition
+    useEffect(() => {
+        if (setInputType) {
+            if (question?.id === 'phone' || question?.id === 'otp' || question?.id === 'age') {
+                setInputType('tel');
+            } else if (question?.id === 'name') {
+                setInputType('name');
+            } else {
+                setInputType('text');
+            }
+        }
+    }, [question?.id, setInputType]);
+
     // Format step text
     const stepText = t.stepOf
         .replace('{current}', currentQuestion + 1)
         .replace('{total}', activeQuestions.length);
 
-    // Initialize reCAPTCHA on mount
+    // Initialize reCAPTCHA on mount, and clear any stale confirmationResult on unmount.
+    // Bug #4 fix: module-level confirmationResult can persist across navigations,
+    // causing "OTP not sent yet" errors on the next visit.
     useEffect(() => {
         if (!recaptchaInitialized.current) {
             try {
@@ -122,6 +138,10 @@ const Register = () => {
                 console.error('reCAPTCHA setup error:', error);
             }
         }
+        return () => {
+            // Clear stale OTP state when navigating away from Register page
+            resetConfirmationResult();
+        };
     }, []);
 
     // Auto-speak question on load and when question changes
@@ -213,6 +233,8 @@ const Register = () => {
     };
 
     // Handle verifying OTP
+    // ARCHITECTURE: localStorage-first. Firebase Auth = identity. localStorage = profile.
+    // Firestore is NEVER in the critical path — it syncs in the background only.
     const handleVerifyOtp = async (otp) => {
         setIsLoading(true);
         setLoadingMessage(t.verifyingOtp);
@@ -222,32 +244,42 @@ const Register = () => {
             setFirebaseUser(user);
             triggerSuccess();
 
-            // Check if user profile exists in Firestore
-            const existingProfile = await getUserFromFirestore(user.uid);
+            // ── Step 1: Check localStorage for existing profile (instant, never fails) ──
+            const cachedRaw = localStorage.getItem('saarthi_user');
+            let cachedProfile = null;
+            try {
+                cachedProfile = cachedRaw ? JSON.parse(cachedRaw) : null;
+            } catch (_) {
+                cachedProfile = null;
+            }
 
-            if (existingProfile && isProfileComplete(existingProfile)) {
-                // Returning user - load profile and go to dashboard
+            if (cachedProfile && isProfileComplete(cachedProfile)) {
+                // Returning user — profile found in local cache
                 setIsNewUser(false);
                 speak(t.welcomeBack);
-
-                // IMPORTANT: Keep user's CURRENT language selection, don't override
-                // Only use saved language if user hasn't already selected one this session
-                // (Language is already set from Welcome page)
-
-                // Save to context and localStorage
-                saveUser(existingProfile);
-
-                // Navigate to dashboard after brief delay
-                setTimeout(() => {
-                    navigate('/dashboard');
-                }, 1500);
-
-                return false; // Don't continue to next question
-            } else {
-                // New user - continue with profile questions
-                setIsNewUser(true);
-                return true;
+                saveUser(cachedProfile);
+                navigate('/dashboard', { replace: true });
+                return false;
             }
+
+            // ── Step 2: Try Firestore in background (non-blocking, best-effort) ──
+            // We don't await this — if it works, great. If not, no problem.
+            getUserFromFirestore(user.uid)
+                .then((profile) => {
+                    if (profile && isProfileComplete(profile)) {
+                        // Background sync found a profile — cache it for next time
+                        saveUser(profile);
+                        localStorage.setItem('saarthi_user', JSON.stringify(profile));
+                        console.log('✅ Background Firestore sync: cached profile for next login');
+                    }
+                })
+                .catch((err) => {
+                    console.warn('⚠️ Background Firestore lookup failed (non-blocking):', err.message);
+                });
+
+            // ── Step 3: No local profile → new user registration ──
+            setIsNewUser(true);
+            return true;
         } catch (error) {
             triggerAlert();
             const errorMsg = getAuthErrorMessage(error, language);
@@ -260,7 +292,7 @@ const Register = () => {
         }
     };
 
-    // Handle saving profile to Firestore
+    // Handle saving profile — localStorage FIRST, Firestore in background
     const handleSaveProfile = async (userData) => {
         setIsLoading(true);
         setLoadingMessage(t.savingProfile);
@@ -268,22 +300,28 @@ const Register = () => {
         try {
             const profileData = {
                 ...userData,
-                language // Store current language preference
+                language
             };
 
-            await saveUserToFirestore(firebaseUser.uid, profileData);
-
-            // Save to context and localStorage
+            // Save to localStorage + context FIRST (instant, guaranteed to work)
             saveUser(profileData);
-
             triggerSuccess();
-            navigate('/dashboard');
+
+            // Navigate to dashboard immediately — user is not blocked
+            navigate('/dashboard', { replace: true });
+
+            // Fire-and-forget: try to sync to Firestore in background
+            if (firebaseUser?.uid) {
+                saveUserToFirestore(firebaseUser.uid, profileData).catch((err) => {
+                    console.warn('⚠️ Background Firestore save failed (profile safe in localStorage):', err.message);
+                });
+            }
         } catch (error) {
-            console.error('Error saving profile:', error);
-            triggerAlert();
-            // Still navigate - data is in localStorage at least
+            console.warn('handleSaveProfile error (navigating anyway):', error);
+            // Even if something unexpected fails, the profile is already saved to
+            // localStorage via saveUser() above, so we can safely proceed.
             saveUser(userData);
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
         } finally {
             setIsLoading(false);
             setLoadingMessage('');
@@ -340,14 +378,14 @@ const Register = () => {
             }
             processedAnswer = otpDigits;
 
-            // Verify OTP
+            // Bug #2 fix: remove stale-state check (firebaseUser is set via setState,
+            // so it will NOT be updated in the same render cycle — always read stale).
+            // Instead: always clear input and return. If navigating to dashboard,
+            // that already happened inside handleVerifyOtp.
             const shouldContinue = await handleVerifyOtp(processedAnswer);
             if (!shouldContinue) {
-                // Either error or returning user (navigating to dashboard)
-                if (!firebaseUser) {
-                    setTempAnswer('');
-                    resetTranscript();
-                }
+                setTempAnswer('');
+                resetTranscript();
                 return;
             }
         } else if (question.id === 'age') {
@@ -407,6 +445,27 @@ const Register = () => {
             className="min-h-screen flex flex-col p-6 pb-40 relative overflow-y-auto"
             {...slideUpTransition}
         >
+            {/* Back Button */}
+            <div className="absolute top-6 left-6 z-[60]">
+                <button
+                    onClick={() => {
+                        triggerAction();
+                        if (currentQuestion > 0) {
+                            setCurrentQuestion(currentQuestion - 1);
+                            resetTranscript();
+                            setTempAnswer('');
+                        } else {
+                            navigate('/login', { replace: true });
+                        }
+                    }}
+                    className="w-12 h-12 rounded-full bg-white/50 backdrop-blur-md border border-gray-200 flex items-center justify-center text-gray-800 shadow-sm hover:bg-white/80 transition-all"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            </div>
+
             {/* reCAPTCHA Container - Invisible */}
             <div id="recaptcha-container"></div>
 
@@ -506,6 +565,7 @@ const Register = () => {
                                 <motion.input
                                     type={question.id === 'otp' ? 'tel' : 'text'}
                                     inputMode={question.id === 'phone' || question.id === 'otp' || question.id === 'age' ? 'numeric' : 'text'}
+                                    autoComplete={question.id === 'otp' ? 'one-time-code' : (question.id === 'phone' ? 'tel' : 'off')}
                                     value={tempAnswer}
                                     onChange={handleInputChange}
                                     placeholder={question.id === 'otp' ? t.enterOtp : t.tapMic}

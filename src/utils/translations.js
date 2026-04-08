@@ -64,6 +64,11 @@ export const VOICE_PROMPTS = {
         'hi-IN': 'क्षमा करें, वह नंबर सही नहीं है। कृपया इसे फिर से बोलें।',
         'mr-IN': 'क्षमस्व, तो नंबर बरोबर नाही. कृपया पुन्हा सांगा.'
     },
+    ERR_INVALID_CODE: {
+        'en-US': 'That code is incorrect. Please check your messages and try again.',
+        'hi-IN': 'वह कोड गलत है। कृपया अपने संदेश जांचें और पुनः प्रयास करें।',
+        'mr-IN': 'तो कोड चुकीचा आहे. कृपया तुमचे संदेश तपासा आणि पुन्हा प्रयत्न करा.'
+    },
     ERR_CODE_EXPIRED: {
         'en-US': 'The secret code has expired. Let me send you a new one.',
         'hi-IN': 'गुप्त कोड समाप्त हो गया है। मुझे आपको एक नया भेजने दें।',

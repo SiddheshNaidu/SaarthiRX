@@ -41,33 +41,48 @@ export const AppProvider = ({ children }) => {
             return;
         }
 
-        const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+        const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
             setFirebaseUser(fbUser);
 
             if (fbUser) {
-                // User is signed in - try to load profile from Firestore
-                try {
-                    const profile = await getUserFromFirestore(fbUser.uid);
-                    if (profile) {
-                        setUserState(profile);
-                        localStorage.setItem('saarthi_user', JSON.stringify(profile));
+                // ── Auth-Implementation-Patterns: Non-Blocking Auth Path ────────
+                // Bug #5 fix: unblock UI IMMEDIATELY when Firebase Auth resolves.
+                // Firestore profile sync is a background operation — it does NOT
+                // block navigation. This is the "defence in depth" pattern:
+                // Firebase Auth = source of truth for identity.
+                // Firestore = source of truth for profile data (async).
+                // localStorage = offline cache (already loaded from useState init).
+                setIsAuthLoading(false); // ← UNBLOCK UI NOW
 
-                        // Apply saved language preference
-                        if (profile.language) {
-                            setLanguageState(profile.language);
-                            localStorage.setItem('saarthi_language', profile.language);
+                // Background sync: load latest profile from Firestore.
+                // If Firestore is offline, the cached localStorage profile
+                // (loaded in useState init) is already in state — no action needed.
+                getUserFromFirestore(fbUser.uid)
+                    .then((profile) => {
+                        if (profile) {
+                            setUserState(profile);
+                            localStorage.setItem('saarthi_user', JSON.stringify(profile));
+                            if (profile.language) {
+                                setLanguageState(profile.language);
+                                localStorage.setItem('saarthi_language', profile.language);
+                            }
                         }
-                    }
-                } catch (error) {
-                    console.error('Error loading user profile:', error);
-                }
+                    })
+                    .catch((err) => {
+                        // Non-fatal: cached localStorage profile is already in state.
+                        console.warn('⚠️ Background Firestore sync failed (using cache):', err.message);
+                    });
+            } else {
+                // User signed out — clear all local state
+                setUserState(null);
+                localStorage.removeItem('saarthi_user');
+                setIsAuthLoading(false);
             }
-
-            setIsAuthLoading(false);
         });
 
         return () => unsubscribe();
     }, []);
+
 
     // Update language and persist
     const setLanguage = (lang) => {

@@ -59,30 +59,76 @@ export const saveUserToFirestore = async (uid, userData) => {
 };
 
 /**
- * Get user profile from Firestore
+ * Get user profile from Firestore with exponential backoff retry.
  * @param {string} uid - Firebase user UID
- * @returns {Promise<object|null>} User profile or null if not found
+ * @returns {Promise<object|null|undefined>}
+ *   object    = profile found (returning user)
+ *   null      = confirmed new user (document doesn't exist)
+ *   undefined = transient network error after all retries — do NOT treat as new user
  */
 export const getUserFromFirestore = async (uid) => {
-    try {
-        if (!db) {
-            console.warn(`🔥 Mock Mode: Returning null for getUserFromFirestore (${uid}) to simulate new user`);
-            return null; // Return null so the login flow prompts for a name
-        }
-
-        const userRef = doc(db, USERS_COLLECTION, uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-            return userSnap.data();
-        }
-        
+    if (!db) {
+        console.warn(`🔥 Mock Mode: getUserFromFirestore(${uid}) returning null`);
         return null;
-    } catch (error) {
-        console.error('Error fetching user from Firestore:', error);
-        throw error;
+    }
+
+    const MAX_ATTEMPTS = 3;
+    const BASE_DELAY_MS = 300; // 300ms → 600ms → 1200ms
+
+    const isTransientError = (error) => {
+        const code = error?.code || '';
+        const msg  = error?.message?.toLowerCase() || '';
+        return (
+            ['unavailable', 'deadline-exceeded', 'resource-exhausted', 'cancelled', 'aborted']
+                .some(c => code.includes(c)) ||
+            msg.includes('offline') ||
+            msg.includes('client is offline') ||
+            msg.includes('timeout')
+        );
+    };
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            const userRef = doc(db, USERS_COLLECTION, uid);
+
+            // Race getDoc against a 15s per-attempt timeout.
+            // IndexedDB cache usually wins this race on warm loads (sub-100ms).
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Firestore getDoc timeout')), 15000)
+            );
+
+            const userSnap = await Promise.race([getDoc(userRef), timeoutPromise]);
+
+            if (userSnap.exists()) {
+                return userSnap.data(); // Returning user
+            }
+            return null; // Confirmed new user — document does not exist
+        } catch (error) {
+            if (!isTransientError(error)) {
+                // Permission error, invalid query, etc. — do not retry
+                console.error('Error fetching user from Firestore:', error);
+                throw error;
+            }
+
+            if (attempt < MAX_ATTEMPTS) {
+                const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+                console.warn(
+                    `⚠️ Firestore transient error (attempt ${attempt}/${MAX_ATTEMPTS}), ` +
+                    `retrying in ${delay}ms:`, error.message
+                );
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                // All retries exhausted — status unknown, not safe to assume new user
+                console.warn(
+                    `⚠️ Firestore failed after ${MAX_ATTEMPTS} attempts for ${uid}:`, error.message
+                );
+                return undefined;
+            }
+        }
     }
 };
+
+
 
 /**
  * Update user profile in Firestore

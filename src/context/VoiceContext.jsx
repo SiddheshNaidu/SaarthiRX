@@ -76,31 +76,45 @@ export const VoiceProvider = ({ children }) => {
                 }
 
                 // ═══════════════════════════════════════════════════════════════
-                // ELDER-FRIENDLY ACCUMULATION
-                // On registration/login: Accumulate all speech segments
-                // On other pages: Use only the latest segment for quick commands
+                // ELDER-FRIENDLY ACCUMULATION AND TYPE FILTERING
                 // ═══════════════════════════════════════════════════════════════
                 const isElderPage = ELDER_FRIENDLY_ROUTES.some(r => 
                     location.pathname.startsWith(r)
                 );
 
-                if (finalTranscript) {
+                let filteredFinal = finalTranscript;
+                let filteredInterim = interimTranscript;
+
+                // Enforce digit or character only if needed
+                if (inputType === 'tel' || inputType === 'age' || inputType === 'numeric') {
+                    // Extract only digits, useful when user is just dictating numbers
+                    filteredFinal = filteredFinal.replace(/\D/g, '');
+                    filteredInterim = filteredInterim.replace(/\D/g, '');
+                } else if (inputType === 'name' || inputType === 'characters') {
+                    // Extract characters only (remove digits)
+                    filteredFinal = filteredFinal.replace(/[\d]/g, '');
+                    filteredInterim = filteredInterim.replace(/[\d]/g, '');
+                }
+
+                if (filteredFinal) {
                     if (isElderPage) {
-                        // ACCUMULATE: Append to previous input (for phone numbers spoken slowly)
-                        accumulatedTranscriptRef.current += ' ' + finalTranscript;
-                        const accumulated = accumulatedTranscriptRef.current.trim();
+                        // ACCUMULATE: Append to previous input
+                        accumulatedTranscriptRef.current += ' ' + filteredFinal;
+                        const accumulated = accumulatedTranscriptRef.current.replace(/\s+/g, ' ').trim();
                         console.log('✅ Accumulated transcript:', accumulated);
                         setTranscript(accumulated);
                     } else {
                         // REPLACE: Use only latest for quick navigation commands
-                        console.log('✅ Final transcript:', finalTranscript);
-                        setTranscript(finalTranscript.trim());
+                        console.log('✅ Final transcript:', filteredFinal);
+                        setTranscript(filteredFinal.trim());
                     }
-                } else if (interimTranscript) {
-                    console.log('📝 Interim:', interimTranscript);
+                } else if (filteredInterim) {
+                    console.log('📝 Interim:', filteredInterim);
                     // Show interim for live feedback
                     if (isElderPage) {
-                        setTranscript((accumulatedTranscriptRef.current + ' ' + interimTranscript).trim());
+                        setTranscript((accumulatedTranscriptRef.current + ' ' + filteredInterim).replace(/\s+/g, ' ').trim());
+                    } else {
+                        setTranscript(filteredInterim.trim());
                     }
                 }
 

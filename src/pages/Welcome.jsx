@@ -8,9 +8,36 @@ import { triggerSuccess } from '../utils/haptics';
 import { cardHover, staggerContainer, staggerItem } from '../utils/animations';
 import GlobalActionButton from '../components/GlobalActionButton';
 
+// Helper: check if a user profile has the minimum required fields
+const isProfileComplete = (profile) => !!(profile?.name && profile?.phone);
+
+// Language definitions (outside component — never changes)
+const LANGUAGES = [
+    {
+        code: 'en-US',
+        label: 'English',
+        buttonText: 'English',
+        flag: '🇬🇧',
+        subtitle: 'Tap to continue in English',
+        confirmationMessage: 'You have selected English.',
+        gradient: 'from-blue-500 to-blue-700',
+        voiceKeywords: ['english', 'अंग्रेजी', 'इंग्लिश', 'इंग्रजी']
+    },
+    {
+        code: 'hi-IN',
+        label: 'Hindi',
+        buttonText: 'हिंदी',
+        flag: '🇮🇳',
+        subtitle: 'हिंदी में जारी रखें',
+        confirmationMessage: 'आपने हिंदी चुनी है।',
+        gradient: 'from-orange-500 to-orange-700',
+        voiceKeywords: ['hindi', 'हिंदी', 'हिन्दी']
+    }
+];
+
 const Welcome = () => {
     const navigate = useNavigate();
-    const { language, setLanguage, setCurrentPageContent } = useApp();
+    const { language, setLanguage, setCurrentPageContent, firebaseUser, isAuthLoading, user } = useApp();
     const { transcript, isListening, stopListening, resetTranscript } = useVoice();
 
     const uiText = {
@@ -33,29 +60,22 @@ const Welcome = () => {
 
     const getUiText = (key) => uiText[key]?.[language] || uiText[key]?.['en-US'];
 
-    const languages = [
-        {
-            code: 'en-US',
-            label: 'English',           // Label for display
-            buttonText: 'English',      // Text shown on button
-            flag: '🇬🇧',
-            subtitle: 'Tap to continue in English',
-            confirmationMessage: 'You have selected English.',
-            gradient: 'from-blue-500 to-blue-700',
-            voiceKeywords: ['english', 'अंग्रेजी', 'इंग्लिश', 'इंग्रजी']
-        },
-        {
-            code: 'hi-IN',
-            label: 'Hindi',             // English label for page
-            buttonText: 'हिंदी',         // Native text on button
-            flag: '🇮🇳',
-            subtitle: 'हिंदी में जारी रखें',
-            confirmationMessage: 'आपने हिंदी चुनी है।',
-            gradient: 'from-orange-500 to-orange-700',
-            voiceKeywords: ['hindi', 'हिंदी', 'हिन्दी']
-        }
-    ];
+    // ── HOOK 1: Auth-Implementation-Patterns Route Guard ─────────────────────
+    // MUST be declared before any early returns (Rules of Hooks).
+    // If Firebase auth session exists AND profile is complete → go to dashboard.
+    // The user should NEVER re-register if they've already set up their profile.
+    useEffect(() => {
+        if (isAuthLoading) return; // Wait for auth state to settle
 
+        if (firebaseUser && isProfileComplete(user)) {
+            console.log('✅ Returning user detected — redirecting to dashboard');
+            navigate('/dashboard', { replace: true });
+        }
+    }, [isAuthLoading, firebaseUser, user, navigate]);
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── HOOK 2: Set page content for voice "Repeat" command ──────────────────
+    // MUST be before early returns (Rules of Hooks).
     useEffect(() => {
         const content = {
             'en-US': 'Choose your language: English or Hindi.',
@@ -63,35 +83,32 @@ const Welcome = () => {
             'mr-IN': 'तुमची भाषा निवडा: English किंवा हिंदी.'
         };
         setCurrentPageContent(content[language] || content['en-US']);
-        // Silent welcome - no TTS on page load
     }, [setCurrentPageContent, language]);
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Listen for voice input and select language - INSTANT SWITCH
+    // ── HOOK 3: Voice input for language selection — INSTANT SWITCH ──────────
+    // MUST be before early returns (Rules of Hooks).
     useEffect(() => {
         if (!transcript) return;
 
         const lowerTranscript = transcript.toLowerCase().trim();
         console.log('Voice input on Welcome:', lowerTranscript);
 
-        // Check each language for matching keywords
-        for (const lang of languages) {
+        for (const lang of LANGUAGES) {
             const match = lang.voiceKeywords.some(keyword =>
                 lowerTranscript.includes(keyword.toLowerCase())
             );
 
             if (match) {
                 console.log('⚡ INSTANT SWITCH: Language matched:', lang.label);
-                
-                // IMMEDIATE ACTION: Kill TTS and mic instantly
+
                 window.speechSynthesis.cancel();
                 stopListening();
                 resetTranscript();
-                
-                // Trigger haptic and set language
+
                 triggerSuccess();
                 setLanguage(lang.code);
-                
-                // Play TTS confirmation in background (fire-and-forget)
+
                 try {
                     const utterance = new SpeechSynthesisUtterance(lang.confirmationMessage);
                     utterance.lang = lang.code;
@@ -100,20 +117,35 @@ const Welcome = () => {
                 } catch (error) {
                     console.error('TTS error:', error);
                 }
-                
-                // NAVIGATE IMMEDIATELY - don't wait for TTS
+
                 navigate('/register');
                 return;
             }
         }
     }, [transcript, stopListening, resetTranscript, setLanguage, navigate]);
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // Handle tap-based language selection (still waits for TTS for UX)
+    // ── EARLY RETURNS (after all hooks) ──────────────────────────────────────
+    // Show loading spinner while auth state resolves (prevents language picker
+    // from flashing for returning users before the redirect fires).
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-warm-bg-start to-warm-bg-end">
+                <div className="flex flex-col items-center gap-4">
+                    <img src="/logo.png" alt="SaarthiRx" className="w-20 h-20 animate-pulse" />
+                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <p className="text-base text-gray-500 font-medium">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Handle tap-based language selection
     const handleLanguageSelect = async (langCode, confirmationMessage) => {
         triggerSuccess();
         setLanguage(langCode);
 
-        // Play TTS confirmation in selected language
         try {
             const utterance = new SpeechSynthesisUtterance(confirmationMessage);
             utterance.lang = langCode;
@@ -121,16 +153,14 @@ const Welcome = () => {
             utterance.pitch = 1;
             window.speechSynthesis.speak(utterance);
 
-            // Wait for TTS to complete (better UX for tap), then navigate
             await new Promise(resolve => {
                 utterance.onend = resolve;
-                setTimeout(resolve, 2000); // Reduced fallback to 2 seconds
+                setTimeout(resolve, 2000);
             });
         } catch (error) {
             console.error('TTS error:', error);
         }
 
-        // Navigate to register page
         navigate('/register');
     };
 
@@ -144,7 +174,6 @@ const Welcome = () => {
         >
             {/* Logo and Header */}
             <div className="text-center mb-6">
-                {/* Logo Image - Bigger for elder visibility */}
                 <motion.img
                     src="/logo.png"
                     alt="SaarthiRx Logo"
@@ -172,7 +201,7 @@ const Welcome = () => {
                 </motion.p>
             </div>
 
-            {/* Language Cards - Optimized for 2 languages */}
+            {/* Language Cards */}
             <motion.div
                 className="w-full max-w-sm sm:max-w-md space-y-4 mt-4"
                 variants={staggerContainer}
@@ -186,7 +215,7 @@ const Welcome = () => {
                     {getUiText('selectLanguage')}
                 </motion.p>
 
-                {languages.map((lang, index) => (
+                {LANGUAGES.map((lang, index) => (
                     <motion.button
                         key={lang.code}
                         onClick={() => handleLanguageSelect(lang.code, lang.confirmationMessage)}
@@ -209,25 +238,21 @@ const Welcome = () => {
                         whileTap={{ scale: 0.98 }}
                         custom={index}
                     >
-                        {/* Flag Icon - Larger */}
                         <div className="w-16 h-16 sm:w-18 sm:h-18 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
                             <span className="text-4xl sm:text-5xl">{lang.flag}</span>
                         </div>
 
-                        {/* Language Info */}
                         <div className="flex-1 text-left">
                             <div className="text-2xl sm:text-3xl font-bold mb-1">{lang.buttonText}</div>
                             <div className="text-base sm:text-lg opacity-90">{lang.subtitle}</div>
                         </div>
 
-                        {/* Arrow Icon */}
                         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
                             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                             </svg>
                         </div>
 
-                        {/* Shine Effect */}
                         <motion.div
                             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                             initial={{ x: '-100%' }}
@@ -238,7 +263,7 @@ const Welcome = () => {
                 ))}
 
                 {/* Voice Hint */}
-                <motion.div 
+                <motion.div
                     className="flex items-center justify-center gap-2 mt-6 text-gray-400"
                     variants={staggerItem}
                     initial={{ opacity: 0 }}
@@ -253,7 +278,6 @@ const Welcome = () => {
             {/* Dark Overlay + Listening Modal */}
             {isListening && (
                 <>
-                    {/* Dark Overlay to fade background */}
                     <motion.div
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
                         initial={{ opacity: 0 }}
@@ -261,14 +285,12 @@ const Welcome = () => {
                         exit={{ opacity: 0 }}
                     />
 
-                    {/* Centered Listening Indicator */}
                     <motion.div
                         className="fixed inset-0 flex flex-col items-center justify-center z-50 px-6"
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                     >
-                        {/* Pulsing Mic Icon */}
                         <motion.div
                             className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-primary/20 flex items-center justify-center mb-6"
                             animate={{
@@ -284,7 +306,6 @@ const Welcome = () => {
                             <span className="text-5xl sm:text-6xl">🎙️</span>
                         </motion.div>
 
-                        {/* Listening Text */}
                         <motion.p
                             className="text-2xl sm:text-3xl font-bold text-white mb-4"
                             animate={{ opacity: [1, 0.7, 1] }}
@@ -293,7 +314,6 @@ const Welcome = () => {
                             {getUiText('listening')}
                         </motion.p>
 
-                        {/* Language Options */}
                         <div className="bg-white/10 backdrop-blur-md px-6 sm:px-8 py-4 rounded-2xl border border-white/20">
                             <p className="text-lg sm:text-xl text-white font-medium text-center">
                                 Say: <span className="text-blue-300">English</span> or <span className="text-orange-300">हिंदी</span>
@@ -303,7 +323,6 @@ const Welcome = () => {
                 </>
             )}
 
-            {/* Global Action Button */}
             <GlobalActionButton isActive={isListening} />
         </motion.div>
     );

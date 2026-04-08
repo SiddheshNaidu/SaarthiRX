@@ -9,7 +9,7 @@ import { useWebOTP } from '../hooks/useWebOTP';
 import { triggerSuccess, triggerAlert, triggerAction } from '../utils/haptics';
 import { cleanAndFormatPhoneNumber, formatPhoneForVoice } from '../utils/numberParser';
 import { setupRecaptcha, sendOtp, verifyOtpDirect, getAuthErrorMessage } from '../services/authService';
-import { getUserFromFirestore, saveUserToFirestore } from '../services/userService';
+import { getUserFromFirestore, saveUserToFirestore, isProfileComplete } from '../services/userService';
 import { getPrompt } from '../utils/translations';
 import OTPWaitingOverlay from '../components/OTPWaitingOverlay';
 import GlobalActionButton from '../components/GlobalActionButton';
@@ -101,7 +101,7 @@ const Login = () => {
     const navigate = useNavigate();
     const { language, saveUser } = useApp();
     const { announce, announceMultiLang } = useVoiceButler();
-    const { transcript, isListening, startListening, stopListening, resetTranscript, speak } = useVoice();
+    const { transcript, isListening, startListening, stopListening, resetTranscript, speak, setInputType } = useVoice();
 
     // State
     const [authState, setAuthState] = useState(AUTH_STATES.IDLE);
@@ -267,9 +267,10 @@ const Login = () => {
         // Start listening after TTS (Echo Buffer: 1500ms)
         setTimeout(() => {
             setAuthState(AUTH_STATES.LISTENING_NUMBER);
+            if (setInputType) setInputType('tel');
             startListening();
         }, 1500);
-    }, [speak, language, startListening]);
+    }, [speak, language, startListening, setInputType]);
 
     // Confirm the phone number before sending OTP
     const handleConfirmNumber = async (formatted, digits) => {
@@ -332,6 +333,7 @@ const Login = () => {
         await speak(fallbackPrompt);
 
         setTimeout(() => {
+            if (setInputType) setInputType('tel');
             startListening();
         }, 1500);
     };
@@ -339,38 +341,46 @@ const Login = () => {
     // Handle OTP received (from WebOTP or voice)
     const handleOTPReceived = async (code) => {
         setAuthState(AUTH_STATES.VERIFYING);
-        const verifyingPrompt = getPrompt('VERIFYING_CODE', language, { default: 'Verifying your code...' });
-        await speak(verifyingPrompt);
 
         try {
+            // ⚡ VERIFY FIRST — before any async speak() calls that could delay
+            // or corrupt the module-level confirmationResult in authService.js
             const user = await verifyOtpDirect(code);
             console.log('✅ User verified:', user.uid);
             setVerifiedUid(user.uid);
 
-            // Load user profile from Firestore
-            const profile = await getUserFromFirestore(user.uid);
+            // Load user profile from Firestore (may be null for new users)
+            let profile = null;
+            try {
+                profile = await getUserFromFirestore(user.uid);
+            } catch (firestoreError) {
+                console.warn('⚠️ Firestore lookup failed, treating as new user:', firestoreError);
+            }
 
-            if (profile) {
-                // Existing user
+            triggerSuccess();
+
+            if (profile && isProfileComplete(profile)) {
+                // ✅ Existing user — go straight to dashboard
                 saveUser(profile);
-                triggerSuccess();
                 setAuthState(AUTH_STATES.SUCCESS);
                 const successPrompt = getPrompt('LOGIN_SUCCESS', language, { default: 'Login successful.' });
                 await speak(successPrompt);
-
-                // Navigate to dashboard
-                setTimeout(() => {
-                    navigate('/dashboard');
-                }, 1000);
+                setTimeout(() => navigate('/dashboard'), 1000);
             } else {
-                // New User - Ask for Name
-                setAuthState(AUTH_STATES.ASKING_NAME);
-                const newUserGreeting = getPrompt('NEW_USER_GREETING', language);
-                await speak(newUserGreeting);
-
+                // 🆕 New user or incomplete profile — send to Register
+                setAuthState(AUTH_STATES.SUCCESS);
+                const setupPrompt = language === 'hi-IN'
+                    ? 'कृपया अपना प्रोफाइल पूरा करें।'
+                    : "Let's complete your profile setup.";
+                await speak(setupPrompt);
                 setTimeout(() => {
-                    setAuthState(AUTH_STATES.LISTENING_NAME);
-                    startListening();
+                    navigate('/register', {
+                        state: {
+                            phoneVerified: true,
+                            uid: user.uid,
+                            phone: formattedPhone || phoneNumber
+                        }
+                    });
                 }, 1500);
             }
         } catch (error) {
@@ -381,7 +391,7 @@ const Login = () => {
             await speak(errorMsg);
             setAuthState(AUTH_STATES.ERROR);
 
-            // Allow retry
+            // Allow retry after 2s
             setTimeout(() => {
                 setAuthState(AUTH_STATES.FALLBACK_VOICE);
                 handleFallbackVoice();
@@ -406,6 +416,7 @@ const Login = () => {
         setTimeout(() => {
             setAuthState(AUTH_STATES.LISTENING_AGE);
             setAgeError('');
+            if (setInputType) setInputType('age');
             startListening();
         }, 1400);
     };
@@ -468,6 +479,7 @@ const Login = () => {
         await speak(askNamePrompt);
         setTimeout(() => {
             setAuthState(AUTH_STATES.LISTENING_NAME);
+            if (setInputType) setInputType('name');
             startListening();
         }, 1400);
     };
@@ -613,6 +625,12 @@ const Login = () => {
 
                                 <p className="text-xl font-medium text-white/90 mb-6 tracking-wide drop-shadow-md">{getPrompt('LISTENING', language, { default: 'Listening...' })}</p>
 
+                                <div className="bg-white/10 backdrop-blur-md px-6 sm:px-8 py-3 rounded-2xl border border-white/20 min-h-[60px] flex items-center justify-center mb-6 w-full">
+                                    <p className="text-xl sm:text-2xl text-white font-medium text-center truncate">
+                                        {transcript || '...'}
+                                    </p>
+                                </div>
+
                                 {phoneNumber && (
                                     <motion.div
                                         initial={{ opacity: 0, scale: 0.8 }}
@@ -701,6 +719,12 @@ const Login = () => {
                                 </motion.div>
 
                                 <p className="text-xl font-medium text-white/90 mb-6 tracking-wide drop-shadow-md">{getPrompt('FALLBACK_ASK_CODE', language)}</p>
+
+                                <div className="bg-white/10 backdrop-blur-md px-6 sm:px-8 py-3 rounded-2xl border border-white/20 min-h-[60px] flex items-center justify-center mb-6 w-full">
+                                    <p className="text-xl sm:text-2xl text-white font-medium text-center truncate">
+                                        {transcript || '...'}
+                                    </p>
+                                </div>
 
                                 {otpCode && (
                                     <motion.div

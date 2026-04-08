@@ -14,7 +14,7 @@ const SESSION_GREETED_KEY = 'saarthi_dashboard_greeted';
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { language, setCurrentPageContent, user } = useApp();
+    const { language, setCurrentPageContent, user, saveUser } = useApp();
     const { speak, startListening, transcript, resetTranscript, isListening } = useVoice();
 
     // Tracks if we've already mounted once (prevents StrictMode double-fire)
@@ -138,6 +138,24 @@ const Dashboard = () => {
             return;
         }
         
+        // LOGOUT command
+        const logoutPatterns = ['logout', 'log out', 'sign out', 'bahar jao', 'बाहर जाओ', 'लॉग आउट', 'बाहेर पडा'];
+        if (logoutPatterns.some(p => cmd.includes(p))) {
+            resetTranscript();
+            triggerAction();
+            const logoutMsg = {
+                'en-US': 'Logging out.',
+                'hi-IN': 'लॉग आउट कर रहे हैं।',
+                'mr-IN': 'लॉग आउट करत आहे.'
+            };
+            speak(logoutMsg[language] || logoutMsg['en-US']).then(() => {
+                sessionStorage.removeItem(SESSION_GREETED_KEY);
+                saveUser(null);
+                navigate('/');
+            });
+            return;
+        }
+
         // CHECK MEDICINE - Navigate to verification page
         const checkMedicinePatterns = ['check medicine', 'sahi hai kya', 'सही है क्या', 'जांच करो', 'verify', 'is this safe'];
         if (checkMedicinePatterns.some(p => cmd.includes(p))) {
@@ -196,6 +214,24 @@ const Dashboard = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
+            {/* Top Bar with Logout Button */}
+            <div className="absolute top-6 right-6 z-[60]">
+                <button
+                    onClick={() => {
+                        triggerAction();
+                        sessionStorage.removeItem(SESSION_GREETED_KEY);
+                        saveUser(null);
+                        navigate('/');
+                    }}
+                    className="w-12 h-12 rounded-full bg-red-50 text-red-500 border border-red-100 flex items-center justify-center shadow-sm hover:shadow-md hover:bg-red-100 transition-all"
+                    aria-label="Logout"
+                >
+                    <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+
             {/* Hero Greeting */}
             <motion.div
                 className="text-center mb-10 mt-8"
