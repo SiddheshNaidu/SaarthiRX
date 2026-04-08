@@ -6,6 +6,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
+    "site": "saarthirx-3d4e4",
     "public": "dist",
     "ignore": [
       "firebase.json",

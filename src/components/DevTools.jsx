@@ -7,8 +7,9 @@ import { testNotification } from '../utils/notifications';
 const DevTools = () => {
     const [isOpen, setIsOpen] = useState(false);
     
-    // Show ONLY in development
-    if (!import.meta.env.DEV) return null;
+    // Show in development OR when explicitly enabled via env var
+    const showDevTools = import.meta.env.DEV || import.meta.env.VITE_SHOW_DEVTOOLS === 'true';
+    if (!showDevTools) return null;
 
     return (
         <div className="fixed bottom-4 left-4 z-50 font-sans">

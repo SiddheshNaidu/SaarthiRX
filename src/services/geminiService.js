@@ -47,10 +47,31 @@ const BLACKLISTED_DRUGS = [
 
 // Minimum confidence threshold for medicine extraction (0-100)
 // Medicines below this threshold will be filtered out
-const CONFIDENCE_THRESHOLD = 80;
+const CONFIDENCE_THRESHOLD = 60;
 
-// API timeout in milliseconds - elderly users shouldn't wait more than 15 seconds
-const API_TIMEOUT_MS = 15000;
+// API timeout in milliseconds PER MODEL attempt
+const API_TIMEOUT_MS = 10000;
+
+// Total budget for the entire model fallback chain
+const TOTAL_BUDGET_MS = 25000;
+
+// Cancellation flag — set to true to abort in-flight analysis
+let _abortFlag = false;
+
+/**
+ * Cancel any in-flight prescription analysis.
+ * Called by the UI when user navigates away or hard timeout fires.
+ */
+export const cancelAnalysis = () => {
+    _abortFlag = true;
+};
+
+/**
+ * Reset the abort flag before starting a new analysis.
+ */
+const resetAbort = () => {
+    _abortFlag = false;
+};
 
 /**
  * Wrap a promise with a timeout
@@ -169,12 +190,12 @@ export const analyzePrescription = async (base64Image, mimeType = 'image/jpeg') 
             `(${preprocessed.diagnostics.processingTimeMs}ms)`);
     }
 
-    // Models to try in order of preference — Option B (Highest OCR Accuracy)
-    // Best for handwritten Indian prescriptions
+    // Models to try in order — fastest/most-available first to avoid wasting time
+    // on models that may not be accessible on the free tier
+    // Models to try in order
     const MODELS_TO_TRY = [
-        'gemini-2.5-pro',         // Primary: Highest accuracy for complex handwriting
-        'gemini-2.5-flash',       // Fallback: Fast + accurate
-        'gemini-2.0-flash',       // Last resort: Proven working model
+        'gemini-2.0-flash',       // Primary: Fast, free-tier available
+        'gemini-1.5-pro'          // Fallback: guaranteed stable endpoint
     ];
 
     // OCR-optimized prompt for handwritten Indian prescriptions
@@ -228,8 +249,22 @@ RULES:
 5. Extract ALL medicines that are clearly readable`;
 
     let lastError = null;
+    resetAbort();
+    const budgetStart = Date.now();
 
     for (const modelName of MODELS_TO_TRY) {
+        // Check cancellation flag
+        if (_abortFlag) {
+            console.log('🛑 Analysis cancelled by user/timeout');
+            return { success: false, error: 'Analysis cancelled', data: null, isCancelled: true };
+        }
+
+        // Check total budget
+        if (Date.now() - budgetStart > TOTAL_BUDGET_MS) {
+            console.log('⏱️ Total budget exceeded, stopping model attempts');
+            break;
+        }
+
         try {
             console.log(`🔄 Trying model: ${modelName}`);
             const model = genAI.getGenerativeModel({ model: modelName });
@@ -346,18 +381,76 @@ RULES:
             return { success: true, data: processedData };
 
         } catch (error) {
-            console.warn(`⚠️ Model ${modelName} failed:`, error.message);
+            // Log full error details to help diagnose production API key issues
+            console.error(`❌ Model ${modelName} failed:`, {
+                message: error.message,
+                status: error.status,
+                statusText: error.statusText,
+                errorDetails: error.errorDetails || error.cause,
+            });
             lastError = error;
 
-            // If quota exhausted, try next model
-            if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-                continue;
+            // ── 429 Rate Limit: wait the suggested delay then retry same model ──
+            const is429 = error.status === 429 ||
+                (error.message && (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')));
+
+            if (is429) {
+                // Extract retryDelay from Google's error details (e.g. "15s" or "16s")
+                let waitMs = 20000; // default 20s if not specified
+                try {
+                    const retryInfo = (error.errorDetails || []).find(d => d.retryDelay);
+                    if (retryInfo?.retryDelay) {
+                        const seconds = parseInt(retryInfo.retryDelay.replace('s', ''), 10);
+                        if (!isNaN(seconds)) waitMs = (seconds + 2) * 1000; // add 2s buffer
+                    }
+                } catch (_) { /* use default */ }
+
+                console.warn(`⏳ Quota hit on ${modelName} — waiting ${waitMs / 1000}s then retrying...`);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
+
+                // Retry same model once more after the wait
+                try {
+                    console.log(`🔄 Retrying model after wait: ${modelName}`);
+                    const retryModel = genAI.getGenerativeModel({ model: modelName });
+                    const retryResult = await withTimeout(
+                        retryModel.generateContent([ prompt, { inlineData: { mimeType: imageMime, data: imageData } } ]),
+                        API_TIMEOUT_MS
+                    );
+                    const retryResponse = await retryResult.response;
+                    let retryText = retryResponse.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                    const rawData = JSON.parse(repairTruncatedJSON(retryText));
+                    console.log(`✅ Retry success with model: ${modelName}`);
+                    // ── re-run safety filter & normalization (same as success path) ──
+                    const safeMedicines = (rawData.medicines || []).filter(med => {
+                        const confidence = med.confidence || 0;
+                        const nameLower = (med.name || '').toLowerCase();
+                        if (confidence < CONFIDENCE_THRESHOLD) return false;
+                        if (nameLower.length < 2) return false;
+                        return true;
+                    });
+                    const processedMedicines = safeMedicines.map(med => normalizeFequency(med));
+                    const processedData = {
+                        medicines: processedMedicines,
+                        doctorName: rawData.doctor_name || null,
+                        date: rawData.prescription_date || null,
+                        extractionQuality: rawData.extraction_quality || 'CLEAR',
+                        unreadableSections: rawData.unreadable_sections || [],
+                        missingInfo: rawData.missing_info || [],
+                        needsDurationConfirmation: processedMedicines.some(m => m.durationWasGuessed),
+                        filteredCount: (rawData.medicines?.length || 0) - processedMedicines.length
+                    };
+                    return { success: true, data: processedData };
+                } catch (retryError) {
+                    console.error(`❌ Retry also failed for ${modelName}:`, retryError.message);
+                    lastError = retryError;
+                    lastError.isQuotaError = true;
+                    break; // Give up entirely after one retry
+                }
             }
 
-            // If it's a different error, still try next model
             continue;
         }
-    }
+    } // end for-of MODELS_TO_TRY
 
     // All models failed
     console.error('❌ All Gemini models failed:', lastError);
@@ -394,6 +487,7 @@ export const analyzeMedicinePhoto = async (base64Image, mimeType = 'image/jpeg',
     const MODELS_TO_TRY = [
         'gemini-2.0-flash',       // Primary: Latest flash with vision
         'gemini-2.5-flash',       // Fallback: Newer flash model
+        'gemini-flash-latest',    // Last resort: Generic flash
     ];
 
     const prompt = `You are analyzing a photo of medicine (tablet, capsule, syrup, or packaging).

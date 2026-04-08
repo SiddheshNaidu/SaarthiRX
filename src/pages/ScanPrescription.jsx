@@ -12,7 +12,7 @@ import { useApp } from '../context/AppContext';
 import { useVoice } from '../context/VoiceContext';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl, clearImageData, validateImageFile } from '../utils/imageUtils';
-import { analyzePrescription, checkDrugInteractions, generateVoiceSummary, generateConflictWarning } from '../services/geminiService';
+import { analyzePrescription, checkDrugInteractions, generateVoiceSummary, generateConflictWarning, cancelAnalysis } from '../services/geminiService';
 import { saveMedicines } from '../services/medicationService';
 import { createRemindersFromPrescription } from '../services/reminderService';
 import { getPrompt } from '../utils/translations';
@@ -64,6 +64,7 @@ const ScanPrescription = () => {
     const imageDataRef = useRef(null);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
+    const mountedRef = useRef(true);  // Guard against state updates after unmount/cancel
 
     // Analysis step labels
     const ANALYSIS_STEPS = [
@@ -75,7 +76,7 @@ const ScanPrescription = () => {
 
     /** Start the countdown timer and step cycler */
     const startAnalysisTimer = () => {
-        setTimeLeft(20);
+        setTimeLeft(30);
         setAnalysisStep(0);
 
         // Step through labels every 5 seconds
@@ -86,9 +87,10 @@ const ScanPrescription = () => {
             setTimeLeft(prev => Math.max(0, prev - 1));
         }, 1000);
 
-        // Hard 20s timeout → force ERROR state
+        // Hard 30s timeout → cancel in-flight API + force ERROR state
         hardTimeoutRef.current = setTimeout(() => {
             stopAnalysisTimer();
+            cancelAnalysis(); // Cancel any in-flight Gemini API calls
             if (imageDataRef.current) {
                 clearImageData(imageDataRef.current);
                 imageDataRef.current = null;
@@ -96,7 +98,7 @@ const ScanPrescription = () => {
             setError(getText('timeoutError'));
             setScanState(SCAN_STATES.ERROR);
             speak(getText('timeoutError'));
-        }, 20000);
+        }, 30000);
     };
 
     /** Stop the countdown timer and hard timeout */
@@ -188,7 +190,10 @@ const ScanPrescription = () => {
 
     // Cleanup on unmount
     useEffect(() => {
+        mountedRef.current = true;
         return () => {
+            mountedRef.current = false;
+            cancelAnalysis(); // Cancel any in-flight API calls on unmount
             if (previewUrl) revokePreviewUrl(previewUrl);
             if (imageDataRef.current) {
                 clearImageData(imageDataRef.current);
@@ -351,12 +356,14 @@ const ScanPrescription = () => {
     };
 
     // Stop camera stream
-    const stopCamera = () => {
+    const stopCamera = (resetToIdle = true) => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         }
-        setScanState(SCAN_STATES.IDLE);
+        if (resetToIdle) {
+            setScanState(SCAN_STATES.IDLE);
+        }
     };
 
     // Capture photo from video stream
@@ -371,8 +378,8 @@ const ScanPrescription = () => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(videoRef.current, 0, 0);
 
-        // Stop camera
-        stopCamera();
+        // Stop camera without resetting to IDLE (we're going to PREVIEW state)
+        stopCamera(false);
 
         // Get image data
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
@@ -472,6 +479,12 @@ const ScanPrescription = () => {
             clearImageData(imageDataRef.current);
             imageDataRef.current = null;
 
+            // Guard: if cancelled/unmounted, don't update state
+            if (!mountedRef.current || result.isCancelled) {
+                console.log('🛑 Analysis completed but component unmounted or cancelled');
+                return;
+            }
+
             if (result.success && result.data?.medicines?.length > 0) {
                 setAnalysisResult(result.data);
 
@@ -513,6 +526,9 @@ const ScanPrescription = () => {
         } catch (err) {
             console.error('Analysis error:', err);
             stopAnalysisTimer();
+            
+            // Guard: if cancelled/unmounted, don't update state
+            if (!mountedRef.current) return;
             
             let errorMessage = err.message;
             
