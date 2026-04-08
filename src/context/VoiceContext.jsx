@@ -40,6 +40,10 @@ export const VoiceProvider = ({ children }) => {
     const silenceTimerRef = useRef(null);
     const cooldownTimerRef = useRef(null);
     const accumulatedTranscriptRef = useRef(''); // For accumulating speech during registration
+    // ─── DEDUPLICATION: track which resultIndex values we've already committed ───
+    // Fixes: Chrome/Android fires onresult multiple times for the same final segment
+    // when continuous=true, causing digits/words to appear doubled.
+    const processedResultIndices = useRef(new Set());
 
     // Check if current route needs elder-friendly long timeout
     const isElderRoute = ELDER_FRIENDLY_ROUTES.some(r => location.pathname.startsWith(r));
@@ -59,26 +63,39 @@ export const VoiceProvider = ({ children }) => {
                 console.log('🎙️ Speech recognition started');
                 setIsListening(true);
                 setError(null);
-                accumulatedTranscriptRef.current = ''; // Reset accumulator on new session
+                accumulatedTranscriptRef.current = '';   // Reset accumulator on new session
+                processedResultIndices.current.clear();  // Reset deduplication set
             };
 
             recognition.onresult = (event) => {
+                // ─── Collect only genuinely NEW results ────────────────────────
+                // Chrome/Android bug: with continuous=true, the engine sometimes
+                // re-emits already-final segments under a new resultIndex wrap.
+                // We guard against this with processedResultIndices.
                 let finalTranscript = '';
                 let interimTranscript = '';
 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcriptPiece = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        finalTranscript += transcriptPiece;
+                    const result = event.results[i];
+                    const piece = result[0].transcript;
+
+                    if (result.isFinal) {
+                        // ── DEDUP GUARD: skip if already processed ──────────
+                        if (processedResultIndices.current.has(i)) {
+                            console.log(`⚠️ Dedup: skipping already-processed index ${i} ("${piece.trim()}")`);
+                            continue;
+                        }
+                        processedResultIndices.current.add(i);
+                        finalTranscript += piece;
                     } else {
-                        interimTranscript += transcriptPiece;
+                        interimTranscript += piece;
                     }
                 }
 
                 // ═══════════════════════════════════════════════════════════════
                 // ELDER-FRIENDLY ACCUMULATION AND TYPE FILTERING
                 // ═══════════════════════════════════════════════════════════════
-                const isElderPage = ELDER_FRIENDLY_ROUTES.some(r => 
+                const isElderPage = ELDER_FRIENDLY_ROUTES.some(r =>
                     location.pathname.startsWith(r)
                 );
 
@@ -87,50 +104,50 @@ export const VoiceProvider = ({ children }) => {
 
                 // Enforce digit or character only if needed
                 if (inputType === 'tel' || inputType === 'age' || inputType === 'numeric') {
-                    // Extract only digits, useful when user is just dictating numbers
-                    filteredFinal = filteredFinal.replace(/\D/g, '');
+                    filteredFinal   = filteredFinal.replace(/\D/g, '');
                     filteredInterim = filteredInterim.replace(/\D/g, '');
                 } else if (inputType === 'name' || inputType === 'characters') {
-                    // Extract characters only (remove digits)
-                    filteredFinal = filteredFinal.replace(/[\d]/g, '');
-                    filteredInterim = filteredInterim.replace(/[\d]/g, '');
+                    filteredFinal   = filteredFinal.replace(/\d/g, '');
+                    filteredInterim = filteredInterim.replace(/\d/g, '');
                 }
 
                 if (filteredFinal) {
                     if (isElderPage) {
-                        // ACCUMULATE: Append to previous input
-                        accumulatedTranscriptRef.current += ' ' + filteredFinal;
-                        const accumulated = accumulatedTranscriptRef.current.replace(/\s+/g, ' ').trim();
-                        console.log('✅ Accumulated transcript:', accumulated);
-                        setTranscript(accumulated);
+                        // ACCUMULATE: append only NEW final chunks
+                        accumulatedTranscriptRef.current =
+                            (accumulatedTranscriptRef.current + ' ' + filteredFinal)
+                                .replace(/\s+/g, ' ')
+                                .trim();
+                        console.log('✅ Accumulated transcript:', accumulatedTranscriptRef.current);
+                        setTranscript(accumulatedTranscriptRef.current);
                     } else {
-                        // REPLACE: Use only latest for quick navigation commands
+                        // REPLACE: use only the latest segment for nav commands
                         console.log('✅ Final transcript:', filteredFinal);
                         setTranscript(filteredFinal.trim());
                     }
                 } else if (filteredInterim) {
+                    // Show live interim preview (never accumulated, just for display)
                     console.log('📝 Interim:', filteredInterim);
-                    // Show interim for live feedback
                     if (isElderPage) {
-                        setTranscript((accumulatedTranscriptRef.current + ' ' + filteredInterim).replace(/\s+/g, ' ').trim());
+                        // Preview = already-committed text + what's being spoken right now
+                        const preview =
+                            (accumulatedTranscriptRef.current + ' ' + filteredInterim)
+                                .replace(/\s+/g, ' ')
+                                .trim();
+                        setTranscript(preview);
                     } else {
                         setTranscript(filteredInterim.trim());
                     }
                 }
 
-                // Auto-stop detection: Reset timer on every result (speech detected)
+                // Auto-stop: reset silence timer on every speech event
                 if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-
-                // Use route-aware silence timeout
                 const timeout = isElderPage ? ELDER_SILENCE_TIMEOUT : QUICK_SILENCE_TIMEOUT;
-                
                 silenceTimerRef.current = setTimeout(() => {
                     console.log(`🤫 Silence detected (${timeout}ms), auto-stopping mic...`);
-                    triggerHaptic([50, 50]); // Success chime haptic
+                    triggerHaptic([50, 50]);
                     if (recognitionRef.current) {
-                        try {
-                            recognitionRef.current.stop();
-                        } catch (e) { }
+                        try { recognitionRef.current.stop(); } catch (e) { }
                     }
                 }, timeout);
             };
@@ -210,7 +227,8 @@ export const VoiceProvider = ({ children }) => {
 
         if (recognitionRef.current && !isListening) {
             setTranscript('');
-            accumulatedTranscriptRef.current = ''; // Clear accumulator
+            accumulatedTranscriptRef.current = '';      // Clear accumulator
+            processedResultIndices.current.clear();     // Clear dedup set for fresh session
             setError(null);
             try {
                 recognitionRef.current.start();
@@ -248,6 +266,7 @@ export const VoiceProvider = ({ children }) => {
     const resetTranscript = useCallback(() => {
         setTranscript('');
         accumulatedTranscriptRef.current = '';
+        processedResultIndices.current.clear(); // Also clear dedup set on manual reset
     }, []);
 
     // Text-to-Speech function

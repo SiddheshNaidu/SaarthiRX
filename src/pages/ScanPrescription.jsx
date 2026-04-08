@@ -46,6 +46,12 @@ const ScanPrescription = () => {
     const [analysisResult, setAnalysisResult] = useState(null);
     const [conflicts, setConflicts] = useState([]);
     const [error, setError] = useState('');
+
+    // Analysis progress feedback
+    const [analysisStep, setAnalysisStep] = useState(0);  // 0-3
+    const [timeLeft, setTimeLeft] = useState(20);
+    const analysisTimerRef = useRef(null);   // countdown interval
+    const hardTimeoutRef = useRef(null);     // 20s hard kill
     
     // Voice Negotiation & Visual Verifier states
     const [showNegotiation, setShowNegotiation] = useState(false);
@@ -58,6 +64,46 @@ const ScanPrescription = () => {
     const imageDataRef = useRef(null);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
+
+    // Analysis step labels
+    const ANALYSIS_STEPS = [
+        { label: { 'en-US': 'Processing image…',        'hi-IN': 'फोटो तैयार हो रहा है…',    'mr-IN': 'फोटो तयार होत आहे…' } },
+        { label: { 'en-US': 'Reading prescription…',    'hi-IN': 'पर्चा पढ़ा जा रहा है…',     'mr-IN': 'प्रिस्क्रिप्शन वाचत आहे…' } },
+        { label: { 'en-US': 'Identifying medicines…',   'hi-IN': 'दवाइयां पहचानी जा रही हैं…','mr-IN': 'औषधे ओळखत आहे…' } },
+        { label: { 'en-US': 'Almost done…',             'hi-IN': 'लगभग हो गया…',               'mr-IN': 'जवळजवळ झाले…' } },
+    ];
+
+    /** Start the countdown timer and step cycler */
+    const startAnalysisTimer = () => {
+        setTimeLeft(20);
+        setAnalysisStep(0);
+
+        // Step through labels every 5 seconds
+        let step = 0;
+        analysisTimerRef.current = setInterval(() => {
+            step = Math.min(step + 1, ANALYSIS_STEPS.length - 1);
+            setAnalysisStep(step);
+            setTimeLeft(prev => Math.max(0, prev - 1));
+        }, 1000);
+
+        // Hard 20s timeout → force ERROR state
+        hardTimeoutRef.current = setTimeout(() => {
+            stopAnalysisTimer();
+            if (imageDataRef.current) {
+                clearImageData(imageDataRef.current);
+                imageDataRef.current = null;
+            }
+            setError(getText('timeoutError'));
+            setScanState(SCAN_STATES.ERROR);
+            speak(getText('timeoutError'));
+        }, 20000);
+    };
+
+    /** Stop the countdown timer and hard timeout */
+    const stopAnalysisTimer = () => {
+        if (analysisTimerRef.current) { clearInterval(analysisTimerRef.current); analysisTimerRef.current = null; }
+        if (hardTimeoutRef.current)   { clearTimeout(hardTimeoutRef.current);   hardTimeoutRef.current = null; }
+    };
 
     // Translations
     const t = {
@@ -152,6 +198,8 @@ const ScanPrescription = () => {
             if (streamRef.current) {
                 streamRef.current.getTracks().forEach(track => track.stop());
             }
+            // Clear analysis timers
+            stopAnalysisTimer();
         };
     }, [previewUrl]);
 
@@ -341,7 +389,11 @@ const ScanPrescription = () => {
 
         // Auto-analyze after brief preview
         setTimeout(() => {
-            analyzeImage();
+            analyzeImage().catch(err => {
+                console.error('Unhandled analyzeImage error:', err);
+                setError(err.message || getText('handwritingError'));
+                setScanState(SCAN_STATES.ERROR);
+            });
         }, 1000);
     };
 
@@ -383,7 +435,11 @@ const ScanPrescription = () => {
 
             // Auto-analyze after brief preview
             setTimeout(() => {
-                analyzeImage();
+                analyzeImage().catch(err => {
+                    console.error('Unhandled analyzeImage error:', err);
+                    setError(err.message || getText('handwritingError'));
+                    setScanState(SCAN_STATES.ERROR);
+                });
             }, 1000);
 
         } catch (err) {
@@ -395,9 +451,14 @@ const ScanPrescription = () => {
 
     // Analyze image with Gemini
     const analyzeImage = async () => {
-        if (!imageDataRef.current) return;
+        if (!imageDataRef.current) {
+            setError(getText('handwritingError'));
+            setScanState(SCAN_STATES.ERROR);
+            return;
+        }
 
         setScanState(SCAN_STATES.ANALYZING);
+        startAnalysisTimer();
         speak(getText('analyzing'));
 
         try {
@@ -407,6 +468,7 @@ const ScanPrescription = () => {
             );
 
             // Privacy: Clear image data immediately after API call
+            stopAnalysisTimer();
             clearImageData(imageDataRef.current);
             imageDataRef.current = null;
 
@@ -450,13 +512,16 @@ const ScanPrescription = () => {
 
         } catch (err) {
             console.error('Analysis error:', err);
+            stopAnalysisTimer();
             
             let errorMessage = err.message;
             
             // Handle specific error types with user-friendly messages
             if (errorMessage === 'API_TIMEOUT') {
                 errorMessage = getText('timeoutError');
-            } else if (errorMessage === 'HANDWRITING_PARSE_ERROR' || errorMessage.includes('JSON')) {
+            } else if (errorMessage === 'HANDWRITING_PARSE_ERROR' || (errorMessage && errorMessage.includes('JSON'))) {
+                errorMessage = getText('handwritingError');
+            } else if (!errorMessage || errorMessage === 'undefined') {
                 errorMessage = getText('handwritingError');
             }
             
@@ -657,10 +722,16 @@ const ScanPrescription = () => {
 
     // Retry scan
     const handleRetry = () => {
+        stopAnalysisTimer();
         setError('');
         setAnalysisResult(null);
         setConflicts([]);
+        setTimeLeft(20);
+        setAnalysisStep(0);
         setScanState(SCAN_STATES.IDLE);
+        // IMPORTANT: reset file inputs so same file can be selected again
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
         if (previewUrl) {
             revokePreviewUrl(previewUrl);
             setPreviewUrl(null);
@@ -832,17 +903,56 @@ const ScanPrescription = () => {
                 {scanState === SCAN_STATES.ANALYZING && (
                     <motion.div
                         key="analyzing"
-                        className="flex-1 flex flex-col items-center justify-center"
+                        className="flex-1 flex flex-col items-center justify-center gap-6"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
+                        {/* Spinner */}
                         <motion.div
                             className="w-24 h-24 rounded-full border-4 border-primary border-t-transparent"
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         />
-                        <p className="mt-6 text-xl text-gray-600">{getText('analyzing')}</p>
+
+                        {/* Step label */}
+                        <motion.p
+                            key={analysisStep}
+                            className="text-xl font-semibold text-gray-700 text-center px-4"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            {ANALYSIS_STEPS[analysisStep]?.label[language] ||
+                             ANALYSIS_STEPS[analysisStep]?.label['en-US']}
+                        </motion.p>
+
+                        {/* Progress bar */}
+                        <div className="w-64 h-3 bg-gray-200 rounded-full overflow-hidden">
+                            <motion.div
+                                className="h-full bg-primary rounded-full"
+                                initial={{ width: '0%' }}
+                                animate={{ width: `${((20 - timeLeft) / 20) * 100}%` }}
+                                transition={{ duration: 1, ease: 'linear' }}
+                            />
+                        </div>
+
+                        {/* Countdown */}
+                        <p className="text-gray-400 text-sm">
+                            {language === 'hi-IN'
+                                ? `अनुमानित समय: ${timeLeft}s`
+                                : language === 'mr-IN'
+                                ? `अंदाजे वेळ: ${timeLeft}s`
+                                : `Est. time remaining: ${timeLeft}s`}
+                        </p>
+
+                        {/* Cancel button */}
+                        <motion.button
+                            onClick={handleRetry}
+                            className="px-6 py-2 rounded-full border border-gray-300 text-gray-500 text-base"
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            {getText('cancel')}
+                        </motion.button>
                     </motion.div>
                 )}
 
