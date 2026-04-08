@@ -445,17 +445,31 @@ const Register = () => {
             className="min-h-screen flex flex-col p-6 pb-40 relative overflow-y-auto"
             {...slideUpTransition}
         >
-            {/* Back Button */}
-            <div className="absolute top-6 left-6 z-[60]">
+            {/* Header with Back Button */}
+            <div className="w-full flex justify-start mb-4 relative z-[60]">
                 <button
                     onClick={() => {
                         triggerAction();
-                        if (currentQuestion > 0) {
-                            setCurrentQuestion(currentQuestion - 1);
-                            resetTranscript();
-                            setTempAnswer('');
+                        resetTranscript();
+                        setTempAnswer('');
+                        
+                        if (currentQuestion === 0) {
+                            // On Phone step, go back to Language/Welcome
+                            navigate('/', { replace: true });
+                        } else if (currentQuestion === 1) {
+                            // On OTP step, go back to Phone
+                            setCurrentQuestion(0);
+                        } else if (currentQuestion === 2) {
+                            // On Name step, user is already verified from Login or OTP step
+                            // If they did come from Login, returning goes to Login
+                            if (location.state?.phoneVerified) {
+                                navigate('/login', { replace: true });
+                            } else {
+                                setCurrentQuestion(0); // Skip OTP, back to Phone
+                            }
                         } else {
-                            navigate('/login', { replace: true });
+                            // Gender, Age
+                            setCurrentQuestion(currentQuestion - 1);
                         }
                     }}
                     className="w-12 h-12 rounded-full bg-white/50 backdrop-blur-md border border-gray-200 flex items-center justify-center text-gray-800 shadow-sm hover:bg-white/80 transition-all"

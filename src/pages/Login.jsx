@@ -531,6 +531,38 @@ const Login = () => {
                 language={language}
             />
 
+            {/* Back Button */}
+            <div className="absolute top-6 left-6 z-[60]">
+                <button
+                    onClick={() => {
+                        stopListening();
+                        setError('');
+                        if (authState === AUTH_STATES.IDLE || authState === AUTH_STATES.ASKING_NUMBER || authState === AUTH_STATES.LISTENING_NUMBER) {
+                            navigate('/', { replace: true });
+                        } else if (
+                            authState === AUTH_STATES.WAITING_OTP || 
+                            authState === AUTH_STATES.VERIFYING_OTP || 
+                            authState === AUTH_STATES.ASKING_NAME || 
+                            authState === AUTH_STATES.LISTENING_NAME
+                        ) {
+                            // If returning to or from OTP, just go back to phone entry step
+                            // because once OTP is verified going back to it is useless without a new number
+                            setAuthState(AUTH_STATES.IDLE);
+                            setTimeout(startVoiceLogin, 100);
+                        } else if (authState === AUTH_STATES.ASKING_AGE || authState === AUTH_STATES.LISTENING_AGE) {
+                            handleGoBackFromAge();
+                        } else {
+                            navigate('/', { replace: true });
+                        }
+                    }}
+                    className="w-12 h-12 rounded-full bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 shadow-sm hover:bg-white/20 transition-all"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+            </div>
+
             <div className="z-10 w-full max-w-sm flex flex-col items-center relative">
                 {/* Logo with 3D Float effect */}
                 <motion.div

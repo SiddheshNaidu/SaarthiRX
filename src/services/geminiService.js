@@ -169,12 +169,12 @@ export const analyzePrescription = async (base64Image, mimeType = 'image/jpeg') 
             `(${preprocessed.diagnostics.processingTimeMs}ms)`);
     }
 
-    // Models to try in order of preference
-    // NOTE: Model names available for this API key (as per API query)
+    // Models to try in order of preference — Option B (Highest OCR Accuracy)
+    // Best for handwritten Indian prescriptions
     const MODELS_TO_TRY = [
-        'gemini-2.0-flash',       // Primary: Latest flash with vision
-        'gemini-2.5-flash',       // Fallback: Newer flash model
-        'gemini-flash-latest',    // Last resort: Generic flash
+        'gemini-2.5-pro',         // Primary: Highest accuracy for complex handwriting
+        'gemini-2.5-flash',       // Fallback: Fast + accurate
+        'gemini-2.0-flash',       // Last resort: Proven working model
     ];
 
     // OCR-optimized prompt for handwritten Indian prescriptions
@@ -655,68 +655,37 @@ export const checkDrugInteractions = (newMedicines, existingMedicines = []) => {
  * @param {string} language - Language code
  * @returns {string} TTS-ready summary
  */
-export const generateVoiceSummary = (medicines, language = 'hi-IN') => {
+export const generateVoiceSummary = (medicines, language = 'en-US') => {
     if (!medicines || medicines.length === 0) {
         const noMeds = {
             'en-US': 'I could not find any medicines in this prescription.',
             'hi-IN': 'मुझे इस पर्चे में कोई दवाई नहीं मिली।',
             'mr-IN': 'मला या प्रिस्क्रिप्शनमध्ये कोणतीही औषधे सापडली नाहीत.'
         };
-        return noMeds[language] || noMeds['hi-IN'];
+        return noMeds[language] || noMeds['en-US'];
     }
 
-    const count = medicines.length;
-    const templates = {
-        'en-US': {
-            found: `I found ${count} medicine${count > 1 ? 's' : ''}.`,
-            morning: 'for morning',
-            afternoon: 'for afternoon',
-            evening: 'for evening',
-            night: 'for night',
-            ordinals: ['First', 'Second', 'Third']
-        },
-        'hi-IN': {
-            found: `मुझे ${count} दवाई${count > 1 ? 'यां' : ''} मिली${count > 1 ? 'ं' : ''}।`,
-            morning: 'सुबह के लिए',
-            afternoon: 'दोपहर के लिए',
-            evening: 'शाम के लिए',
-            night: 'रात के लिए',
-            ordinals: ['पहली', 'दूसरी', 'तीसरी']
-        },
-        'mr-IN': {
-            found: `मला ${count} औषध${count > 1 ? 'े' : ''} सापडल${count > 1 ? 'ी' : 'े'}.`,
-            morning: 'सकाळसाठी',
-            afternoon: 'दुपारसाठी',
-            evening: 'संध्याकाळसाठी',
-            night: 'रात्रीसाठी',
-            ordinals: ['पहिले', 'दुसरे', 'तिसरे']
-        }
-    };
-
-    const t = templates[language] || templates['hi-IN'];
-    let summary = t.found + ' ';
-
-    // Cap at 3 medicines to avoid overwhelmingly long TTS
-    const medsToAnnounce = medicines.slice(0, 3);
+    let summary = "";
     
-    medsToAnnounce.forEach((med, i) => {
-        const timing = med.timing?.[0] || 'morning';
-        const timingText = t[timing] || t.morning;
-        const ordinal = t.ordinals[i] || '';
-        
-        const dosage = med.dosage ? `${med.dosage} ` : '';
-        const foodPrefix = language === 'hi-IN' ? (med.withFood ? 'खाने के बाद' : 'खाली पेट') :
-                           language === 'mr-IN' ? (med.withFood ? 'जेवणानंतर' : 'रिकाम्या पोटी') :
-                           (med.withFood ? 'after food' : 'empty stomach');
+    // Only read up to 4 medicines to avoid extreme length, just as a safety cap
+    const medsToAnnounce = medicines.slice(0, 4);
 
-        summary += `${ordinal}, ${med.name} ${dosage}${timingText} ${foodPrefix}. `;
+    medsToAnnounce.forEach((med, i) => {
+        // Construct natural phrasing: e.g. "Udilive 3 times a day"
+        let timesText = "1 time a day";
+        if (med.timesPerDay > 1) {
+            timesText = `${med.timesPerDay} times a day`;
+        }
+        
+        summary += `${med.name} ${timesText}, `;
     });
 
-    if (count > 3) {
-        summary += language === 'hi-IN' ? 'और अन्य दवाइयां भी हैं जिन्हें आप स्क्रीन पर देख सकते हैं।' : 
-                   language === 'mr-IN' ? 'आणि इतर औषधे तुम्ही स्क्रीनवर पाहू शकता.' : 
-                   'And other medicines you can view on screen.';
+    if (medicines.length > 4) {
+        summary += "and other medicines, ";
     }
+
+    // Append the exact requested conclusion
+    summary += "and the reminders are saved in reminders tab if you want you can change the timing.";
 
     return summary;
 };

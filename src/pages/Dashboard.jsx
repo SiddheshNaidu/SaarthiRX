@@ -156,6 +156,24 @@ const Dashboard = () => {
             return;
         }
 
+        // SCAN PRESCRIPTION - Navigate to prescription scanner
+        const scanPatterns = ['scan prescription', 'scan my prescription', 'nuskha', 'नुस्खा', 'स्कॅन', 'स्कैन', 'scan'];
+        // Ensure "scan medicine" doesn't falsely trigger "scan prescription" if we check it first, 
+        // by making sure "check medicine" is handled first, OR just keep them distinct. 
+        // We'll put this right before "check medicine", but "check medicine" doesn't have the word "scan" in its patterns, so it's safe.
+        if (scanPatterns.some(p => cmd.includes(p))) {
+            resetTranscript();
+            triggerAction();
+            const scanMsg = {
+                'en-US': 'Opening scanner. Please point the camera at your prescription.',
+                'hi-IN': 'स्कैनर खोल रहा हूँ। कृपया कैमरा पर्चे पर रखें।',
+                'mr-IN': 'स्कॅनर उघडत आहे. कृपया कॅमेरा प्रिस्क्रिप्शनवर ठेवा.'
+            };
+            speak(scanMsg[language] || scanMsg['en-US']);
+            navigate('/scan');
+            return;
+        }
+
         // CHECK MEDICINE - Navigate to verification page
         const checkMedicinePatterns = ['check medicine', 'sahi hai kya', 'सही है क्या', 'जांच करो', 'verify', 'is this safe'];
         if (checkMedicinePatterns.some(p => cmd.includes(p))) {
