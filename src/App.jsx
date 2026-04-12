@@ -9,7 +9,6 @@ import PremiumLayout from './components/PremiumLayout';
 import VoiceNavigation from './components/VoiceNavigation';
 import ReminderScheduler from './components/ReminderScheduler';
 import ProtectedRoute from './components/ProtectedRoute';
-import BottomNav from './components/BottomNav';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -95,7 +94,6 @@ function App() {
                 <VoiceNavigation>
                   <ReminderScheduler>
                     <AnimatedRoutes />
-                    <BottomNav />
                     <DevTools />
                   </ReminderScheduler>
                 </VoiceNavigation>

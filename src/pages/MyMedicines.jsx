@@ -14,6 +14,7 @@ import { useVoiceButler } from '../context/VoiceButlerContext';
 import { verifyMedicinePhoto } from '../services/geminiService';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl } from '../utils/imageUtils';
+import DualActionButtons from '../components/DualActionButtons';
 
 
 const MyMedicines = () => {
@@ -314,27 +315,26 @@ const MyMedicines = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
+            className="min-h-[100dvh] w-full bg-neutral-950 flex flex-col relative overflow-hidden pb-32"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
             {/* Header - Matching ReminderList style with Blue color */}
-            <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white p-6 pt-8 pb-10 rounded-b-3xl shadow-premium-lg">
+            <div className="bg-neutral-900 border-b border-white/5 p-6 pt-8 max-h-min pb-10 rounded-b-3xl shadow-2xl relative z-10">
                 <motion.button
                     onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-2 text-white/80 hover:text-white mb-4"
+                    className="w-12 h-12 bg-neutral-900/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 text-white/80 hover:text-white mb-6"
                     whileTap={{ scale: 0.95 }}
                 >
                     <span className="text-2xl">←</span>
-                    <span className="text-lg">{labels.back}</span>
                 </motion.button>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-2">{labels.title}</h1>
-                <p className="text-base sm:text-lg text-white/80">{labels.subtitle}</p>
+                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2 tracking-tight">{labels.title}</h1>
+                <p className="text-base sm:text-lg text-white/50 font-medium">{labels.subtitle}</p>
             </div>
 
             {/* Content */}
-            <div className="flex-1 px-2 py-4 -mt-4">
+            <div className="flex-1 px-4 py-6 z-0 relative"><div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-500/100/10 rounded-full blur-[100px] pointer-events-none" />
                 {medicines.length === 0 ? (
                     <motion.div
                         className="flex flex-col items-center justify-center py-16 text-center"
@@ -342,15 +342,15 @@ const MyMedicines = () => {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <div className="text-8xl mb-6">💊</div>
-                        <h2 className="text-2xl font-bold text-gray-700 mb-2">{labels.empty}</h2>
-                        <p className="text-gray-500">{labels.emptyHint}</p>
+                        <h2 className="text-2xl font-bold text-white/90 mb-2 tracking-tight">{labels.empty}</h2>
+                        <p className="text-white/50 font-medium text-lg">{labels.emptyHint}</p>
                     </motion.div>
                 ) : (
                     <div className="space-y-3">
                         {medicines.map((medicine, index) => (
                             <motion.div
                                 key={medicine.id || index}
-                                className="bg-white rounded-2xl p-3 shadow-md border border-gray-100 min-h-[90px] relative overflow-hidden"
+                                className="bg-neutral-900/80 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-white/5 relative overflow-hidden"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.08 }}
@@ -385,10 +385,10 @@ const MyMedicines = () => {
 
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">
+                                        <h3 className="text-base sm:text-lg font-bold text-white/90 truncate">
                                             {medicine.name}
                                         </h3>
-                                        <p className="text-base text-gray-600 truncate">
+                                        <p className="text-sm font-medium text-white/50 truncate">
                                             {medicine.visualType || 'Tablet'} • {medicine.dosage || ''}
                                         </p>
                                     </div>
@@ -397,19 +397,19 @@ const MyMedicines = () => {
                                     <div className="flex flex-col items-end gap-1 shrink-0">
                                         <div className={`px-3 py-1 rounded-full text-base font-bold ${
                                             medicine.quantity < 3
-                                                ? 'bg-red-100 text-red-600'
-                                                : 'bg-gray-100 text-gray-700'
+                                                ? 'bg-red-500/100/10 text-red-400 border border-red-500/20'
+                                                : 'bg-neutral-800 text-white/70 border border-white/10'
                                         }`}>
                                             {medicine.quantity}
                                         </div>
 
                                         <motion.button
                                             onClick={() => setSelectedMedicine(medicine)}
-                                            className="text-blue-600 text-base font-semibold flex items-center gap-1"
+                                            className="w-10 h-10 rounded-xl bg-blue-500/100/10 text-blue-400 flex items-center justify-center border border-blue-500/20 font-semibold mt-1"
                                             whileTap={{ scale: 0.95 }}
                                             aria-label={`${labels.details} ${medicine.name}`}
                                         >
-                                            👁️ <span className="hidden sm:inline">{labels.details}</span><span className="sm:hidden">Info</span>
+                                            👁️
                                         </motion.button>
                                     </div>
                                 </div>
@@ -448,21 +448,21 @@ const MyMedicines = () => {
                         <div className="absolute bottom-0 inset-x-0 p-6 flex justify-center gap-4">
                             <motion.button
                                 onClick={stopCamera}
-                                className="w-16 h-16 rounded-full bg-white/20 text-white flex items-center justify-center text-2xl"
+                                className="w-16 h-16 rounded-full bg-neutral-900/20 text-white flex items-center justify-center text-2xl"
                                 whileTap={{ scale: 0.9 }}
                             >
                                 ✕
                             </motion.button>
                             <motion.button
                                 onClick={capturePhoto}
-                                className="w-20 h-20 rounded-full bg-white text-blue-500 flex items-center justify-center text-3xl shadow-lg"
+                                className="w-20 h-20 rounded-full bg-neutral-900 text-blue-500 flex items-center justify-center text-3xl shadow-lg"
                                 whileTap={{ scale: 0.9 }}
                             >
                                 📸
                             </motion.button>
                             <motion.button
                                 onClick={() => { stopCamera(); fileInputRef.current?.click(); }}
-                                className="w-16 h-16 rounded-full bg-white/20 text-white flex items-center justify-center text-2xl"
+                                className="w-16 h-16 rounded-full bg-neutral-900/20 text-white flex items-center justify-center text-2xl"
                                 whileTap={{ scale: 0.9 }}
                             >
                                 🖼️
@@ -495,15 +495,15 @@ const MyMedicines = () => {
             <AnimatePresence>
                 {selectedMedicine && (
                     <motion.div
-                        className="fixed inset-0 bg-white z-50 overflow-y-auto"
+                        className="fixed inset-0 bg-neutral-950 z-50 overflow-y-auto pt- safe-top"
                         initial={{ y: '100%' }}
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                     >
                         {/* Header */}
-                        <div className="bg-gradient-to-br from-orange-400 to-orange-500 text-white p-6 pt-10 rounded-b-3xl">
-                            <h1 className="text-3xl font-bold mb-1">{labels.prescriptionDetails}</h1>
+                        <div className="bg-neutral-900 border-b border-white/5 p-6 pt-10 rounded-b-3xl relative z-10">
+                            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent mb-1 tracking-tight">{labels.prescriptionDetails}</h1>
                             {selectedMedicine.doctorName && (
                                 <p className="text-white/80">{selectedMedicine.doctorName}</p>
                             )}
@@ -515,13 +515,13 @@ const MyMedicines = () => {
                         {/* Medicine Name Card */}
                         <div className="p-4">
                             <div
-                                className="bg-white rounded-2xl p-5 shadow-lg border-l-4"
+                                className="bg-neutral-900 rounded-2xl p-5 shadow-lg border-l-4"
                                 style={{ borderColor: getColor(selectedMedicine.visualColor) }}
                             >
-                                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                <h2 className="text-2xl font-bold text-white/90 mb-2">
                                     {selectedMedicine.name}
                                 </h2>
-                                <span className="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm font-medium">
+                                <span className="inline-block px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-full text-sm font-medium">
                                     {selectedMedicine.visualType || 'tablet'}
                                 </span>
                             </div>
@@ -529,8 +529,8 @@ const MyMedicines = () => {
 
                         {/* How it Looks Section */}
                         <div className="p-4">
-                            <div className="bg-white rounded-2xl p-5 shadow-md">
-                                <h3 className="text-lg font-semibold text-gray-700 mb-4">{labels.howItLooks}</h3>
+                            <div className="bg-neutral-900 rounded-2xl p-5 shadow-md">
+                                <h3 className="text-lg font-semibold text-white/80 mb-4">{labels.howItLooks}</h3>
                                 <div className="flex justify-center mb-4">
                                     {selectedMedicine.userPhoto ? (
                                         <img
@@ -548,7 +548,7 @@ const MyMedicines = () => {
                                         />
                                     )}
                                 </div>
-                                <p className="text-center text-gray-600">
+                                <p className="text-center text-white/60">
                                     💊 {selectedMedicine.visualDescription ||
                                     `Small, round, ${selectedMedicine.visualColor || 'white'} ${selectedMedicine.visualType || 'tablet'}.`}
                                 </p>
@@ -557,17 +557,17 @@ const MyMedicines = () => {
 
                         {/* When to Take Section - Show specific timings */}
                         <div className="p-4">
-                            <div className="bg-white rounded-2xl p-5 shadow-md">
-                                <h3 className="text-lg font-semibold text-gray-700 mb-3">{labels.whenToTake}</h3>
+                            <div className="bg-neutral-900 rounded-2xl p-5 shadow-md">
+                                <h3 className="text-lg font-semibold text-white/80 mb-3">{labels.whenToTake}</h3>
                                 
                                 {/* Specific Timing Pills */}
                                 <div className="flex flex-wrap gap-2 mb-3">
                                     {(selectedMedicine.timing || ['morning']).map((time, idx) => {
                                         const timingInfo = {
-                                            morning: { icon: '🌅', label: { 'en-US': 'Morning (9 AM)', 'hi-IN': 'सुबह (9 बजे)', 'mr-IN': 'सकाळी (9 वाजता)' }, bg: 'bg-yellow-50', text: 'text-yellow-700' },
-                                            afternoon: { icon: '☀️', label: { 'en-US': 'Afternoon (2 PM)', 'hi-IN': 'दोपहर (2 बजे)', 'mr-IN': 'दुपारी (2 वाजता)' }, bg: 'bg-orange-50', text: 'text-orange-700' },
-                                            evening: { icon: '🌆', label: { 'en-US': 'Evening (6 PM)', 'hi-IN': 'शाम (6 बजे)', 'mr-IN': 'संध्याकाळी (6 वाजता)' }, bg: 'bg-purple-50', text: 'text-purple-700' },
-                                            night: { icon: '🌙', label: { 'en-US': 'Night (9 PM)', 'hi-IN': 'रात (9 बजे)', 'mr-IN': 'रात्री (9 वाजता)' }, bg: 'bg-blue-50', text: 'text-blue-700' }
+                                            morning: { icon: '🌅', label: { 'en-US': 'Morning (9 AM)', 'hi-IN': 'सुबह (9 बजे)', 'mr-IN': 'सकाळी (9 वाजता)' }, bg: 'bg-yellow-500/10', text: 'text-yellow-400' },
+                                            afternoon: { icon: '☀️', label: { 'en-US': 'Afternoon (2 PM)', 'hi-IN': 'दोपहर (2 बजे)', 'mr-IN': 'दुपारी (2 वाजता)' }, bg: 'bg-orange-500/10', text: 'text-orange-400' },
+                                            evening: { icon: '🌆', label: { 'en-US': 'Evening (6 PM)', 'hi-IN': 'शाम (6 बजे)', 'mr-IN': 'संध्याकाळी (6 वाजता)' }, bg: 'bg-purple-500/10', text: 'text-purple-400' },
+                                            night: { icon: '🌙', label: { 'en-US': 'Night (9 PM)', 'hi-IN': 'रात (9 बजे)', 'mr-IN': 'रात्री (9 वाजता)' }, bg: 'bg-blue-500/10', text: 'text-blue-400' }
                                         };
                                         const info = timingInfo[time] || timingInfo.morning;
                                         return (
@@ -583,7 +583,7 @@ const MyMedicines = () => {
                                 </div>
 
                                 {/* Frequency summary */}
-                                <p className="text-gray-500 text-sm">
+                                <p className="text-white/50 text-sm">
                                     {selectedMedicine.frequency || `${(selectedMedicine.timing || ['morning']).length}x daily`}
                                 </p>
                             </div>
@@ -591,13 +591,13 @@ const MyMedicines = () => {
 
                         {/* With Food / Empty Stomach */}
                         <div className="p-4">
-                            <div className="bg-white rounded-2xl p-5 shadow-md flex items-center gap-4">
-                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                            <div className="bg-neutral-900 rounded-2xl p-5 shadow-md flex items-center gap-4">
+                                <div className="w-12 h-12 bg-neutral-800 rounded-full flex items-center justify-center">
                                     <span className="text-2xl">
                                         {selectedMedicine.withFood ? '🍽️' : '🚫'}
                                     </span>
                                 </div>
-                                <span className="text-lg text-gray-700">
+                                <span className="text-lg text-white/80">
                                     {selectedMedicine.withFood ? labels.takeWithFood : labels.takeOnEmptyStomach}
                                 </span>
                             </div>
@@ -605,13 +605,13 @@ const MyMedicines = () => {
 
                         {/* Duration */}
                         <div className="p-4">
-                            <div className="bg-white rounded-2xl p-5 shadow-md flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                            <div className="bg-neutral-900 rounded-2xl p-5 shadow-md flex items-center gap-4">
+                                <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center">
                                     <span className="text-2xl">📅</span>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500">{labels.duration}</p>
-                                    <p className="text-xl font-bold text-gray-800">
+                                    <p className="text-sm text-white/50">{labels.duration}</p>
+                                    <p className="text-xl font-bold text-white/90">
                                         {selectedMedicine.durationDays || 30} {labels.days}
                                     </p>
                                 </div>
@@ -622,7 +622,7 @@ const MyMedicines = () => {
                         <div className="p-4 pb-8 flex flex-col gap-3">
                             <motion.button
                                 onClick={() => navigate(`/prescription/${selectedMedicine.id || 'details'}`, { state: { medicine: selectedMedicine } })}
-                                className="w-full py-4 bg-blue-50 text-blue-600 border-2 border-blue-200 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-blue-500/10 text-blue-400 border-2 border-blue-500/20 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
                                 whileTap={{ scale: 0.95 }}
                                 aria-label={labels.viewFullDetails}
                             >
@@ -631,7 +631,7 @@ const MyMedicines = () => {
                             <div className="flex gap-3">
                                 <motion.button
                                     onClick={() => setSelectedMedicine(null)}
-                                    className="flex-1 py-4 bg-gray-100 text-gray-700 rounded-2xl font-bold text-lg"
+                                    className="flex-1 py-4 bg-neutral-800 text-white/70 border border-white/10 rounded-2xl font-bold text-lg"
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     {labels.goBack}
@@ -641,7 +641,7 @@ const MyMedicines = () => {
                                         const msg = `${selectedMedicine.name}. ${selectedMedicine.visualDescription || 'Take'} ${selectedMedicine.frequency || 'daily'}. ${selectedMedicine.withFood ? labels.takeWithFood : labels.takeOnEmptyStomach}.`;
                                         speak(msg);
                                     }}
-                                    className="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+                                    className="flex-1 py-4 bg-orange-500/100 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     🔊 {labels.repeatInstructions}
@@ -667,8 +667,8 @@ const MyMedicines = () => {
                         <motion.div 
                             className={`rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl ${
                                 verificationResult.matchFound 
-                                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-4 border-green-400' 
-                                    : 'bg-gradient-to-br from-red-50 to-red-100 border-4 border-red-400'
+                                    ? 'bg-neutral-900 border border-white/5 border-4 border-green-500/50' 
+                                    : 'bg-neutral-900 border border-white/5 border-4 border-red-500/50'
                             }`}
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -682,14 +682,14 @@ const MyMedicines = () => {
                             
                             {/* Result Title */}
                                 <h2 className={`text-2xl font-bold mb-3 ${
-                                    verificationResult.matchFound ? 'text-green-800' : 'text-red-800'
+                                    verificationResult.matchFound ? 'text-green-400' : 'text-red-400'
                                 }`}>
                                 {verificationResult.matchFound ? labels.matchFoundTitle : labels.notInPrescriptionTitle}
                             </h2>
                             
                             {/* Detected Medicine Name */}
                             <p className={`text-xl font-semibold mb-4 ${
-                                verificationResult.matchFound ? 'text-green-700' : 'text-red-700'
+                                verificationResult.matchFound ? 'text-green-400' : 'text-red-400'
                             }`}>
                                 {verificationResult.detectedName || labels.unknown}
                             </p>
@@ -716,7 +716,7 @@ const MyMedicines = () => {
                             <motion.button
                                 onClick={() => setShowVerificationModal(false)}
                                 className={`w-full py-4 rounded-2xl font-bold text-lg text-white ${
-                                    verificationResult.matchFound ? 'bg-green-500' : 'bg-red-500'
+                                    verificationResult.matchFound ? 'bg-green-500/100' : 'bg-red-500/100'
                                 }`}
                                 whileTap={{ scale: 0.95 }}
                                 aria-label={labels.ok}
@@ -729,7 +729,7 @@ const MyMedicines = () => {
             </AnimatePresence>
 
             {/* Global Action Button */}
-            {/* BottomNav handles global navigation and voice controls */}
+            <DualActionButtons />
         </motion.div>
     );
 };

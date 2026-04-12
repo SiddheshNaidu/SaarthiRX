@@ -14,6 +14,7 @@ import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUtils';
 import { verifyMedicinePhoto } from '../services/geminiService';
 import { findBestMedicineMatch } from '../data/medicineDatabase';
+import DualActionButtons from '../components/DualActionButtons';
 
 
 
@@ -336,16 +337,16 @@ const ScanMedicine = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
+            className="min-h-screen flex flex-col bg-neutral-950 text-neutral-100 font-sans pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
             {/* Header */}
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-6 pt-8 pb-10 rounded-b-3xl shadow-xl">
+            <div className="bg-neutral-950 text-white px-4 py-6 pt-8 pb-10 border-b border-neutral-800">
                 <motion.button
                     onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-2 text-white/80 hover:text-white mb-4"
+                    className="flex items-center gap-2 text-neutral-400 hover:text-white mb-4"
                     whileTap={{ scale: 0.95 }}
                 >
                     <span className="text-2xl">←</span>
@@ -370,7 +371,7 @@ const ScanMedicine = () => {
                             {/* Camera Button */}
                             <motion.button
                                 onClick={startCamera}
-                                className="w-full p-8 rounded-3xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg"
+                                className="w-full p-8 rounded-3xl bg-primary text-white shadow-[0_0_40px_rgba(37,99,235,0.4)] border border-primary-light/30"
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <div className="text-6xl mb-4">📷</div>
@@ -380,11 +381,11 @@ const ScanMedicine = () => {
                             {/* Gallery Button */}
                             <motion.button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="w-full p-6 rounded-2xl bg-white border-2 border-gray-200 shadow-md"
+                                className="w-full p-6 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl hover:border-neutral-700 hover:bg-neutral-800 transition-all"
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <div className="text-4xl mb-2">🖼️</div>
-                                <div className="text-xl font-semibold text-gray-700">{labels.gallery}</div>
+                                <div className="text-xl font-semibold text-neutral-200">{labels.gallery}</div>
                             </motion.button>
                         </motion.div>
                     )}
@@ -398,7 +399,7 @@ const ScanMedicine = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                         >
-                            <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-lg border-4 border-blue-500">
+                            <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-lg border-4 border-primary">
                                 <video
                                     ref={videoRef}
                                     autoPlay
@@ -410,14 +411,14 @@ const ScanMedicine = () => {
                             </div>
                             <motion.button
                                 onClick={captureFromVideo}
-                                className="mt-6 w-24 h-24 rounded-full bg-white border-4 border-blue-500 shadow-xl flex items-center justify-center"
+                                className="mt-6 w-24 h-24 rounded-full bg-white border-4 border-primary shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center justify-center"
                                 whileTap={{ scale: 0.9 }}
                             >
-                                <div className="w-16 h-16 rounded-full bg-blue-500" />
+                                <div className="w-16 h-16 rounded-full bg-primary" />
                             </motion.button>
                             <motion.button
                                 onClick={stopCamera}
-                                className="mt-4 px-6 py-2 text-gray-600 text-lg"
+                                className="mt-4 px-6 py-2 text-neutral-400 text-lg hover:text-white"
                                 whileTap={{ scale: 0.95 }}
                             >
                                 ✕ Cancel
@@ -435,11 +436,11 @@ const ScanMedicine = () => {
                             exit={{ opacity: 0 }}
                         >
                             <motion.div
-                                className="w-24 h-24 rounded-full border-4 border-blue-500 border-t-transparent"
+                                className="w-24 h-24 rounded-full border-4 border-primary border-t-transparent"
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                             />
-                            <p className="mt-6 text-xl text-gray-600">{labels.analyzing}</p>
+                            <p className="mt-6 text-xl text-neutral-300 font-medium">{labels.analyzing}</p>
                         </motion.div>
                     )}
 
@@ -462,21 +463,21 @@ const ScanMedicine = () => {
                                 >
                                     ✅
                                 </motion.div>
-                                <h2 className="text-2xl font-bold text-green-600">{labels.matchFound}</h2>
+                                <h2 className="text-2xl font-bold text-green-500">{labels.matchFound}</h2>
                             </div>
 
                             {/* Medicine Card */}
-                            <div className="bg-white rounded-2xl p-5 shadow-lg border-l-4" style={{ borderColor: getColorHex(matchedMedicine.visualColor) }}>
-                                <h3 className="text-2xl font-bold text-gray-800 mb-2">{matchedMedicine.name}</h3>
-                                <p className="text-gray-600 mb-4">{matchedMedicine.visualDescription || matchedMedicine.dosage}</p>
+                            <div className="bg-neutral-900 rounded-2xl p-5 shadow-xl border-l-4" style={{ borderColor: getColorHex(matchedMedicine.visualColor) }}>
+                                <h3 className="text-2xl font-bold text-white mb-2">{matchedMedicine.name}</h3>
+                                <p className="text-neutral-400 mb-4">{matchedMedicine.visualDescription || matchedMedicine.dosage}</p>
                                 
                                 {/* Expiry if available */}
                                 {(scannedData?.expiryDate || matchedMedicine.expiryDate) && (
-                                    <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-xl">
+                                    <div className="flex items-center gap-2 p-3 bg-yellow-950/30 border border-yellow-900/50 rounded-xl">
                                         <span className="text-2xl">📅</span>
                                         <div>
-                                            <p className="text-sm text-gray-500">{labels.expires}</p>
-                                            <p className="font-bold text-gray-800">{scannedData?.expiryDate || matchedMedicine.expiryDate}</p>
+                                            <p className="text-sm text-neutral-500">{labels.expires}</p>
+                                            <p className="font-bold text-white">{scannedData?.expiryDate || matchedMedicine.expiryDate}</p>
                                         </div>
                                     </div>
                                 )}
@@ -485,7 +486,7 @@ const ScanMedicine = () => {
                             {/* Try Again Button */}
                             <motion.button
                                 onClick={handleTryAgain}
-                                className="w-full py-4 bg-blue-500 text-white rounded-2xl font-bold text-lg"
+                                className="w-full py-4 bg-primary text-white rounded-2xl font-bold text-lg"
                                 whileTap={{ scale: 0.98 }}
                             >
                                 🔍 {labels.tryAgain}
@@ -512,26 +513,26 @@ const ScanMedicine = () => {
                                 >
                                     ⚠️
                                 </motion.div>
-                                <h2 className="text-2xl font-bold text-orange-600">{labels.noMatch}</h2>
+                                <h2 className="text-2xl font-bold text-red-500">{labels.noMatch}</h2>
                             </div>
 
                             {/* Typical Use - Only show this */}
                             {scannedData?.usualUse && (
-                                <div className="bg-blue-50 rounded-2xl p-5 border-2 border-blue-200">
-                                    <p className="text-sm text-blue-600 font-semibold mb-1">{labels.usualUse}:</p>
-                                    <p className="text-lg text-blue-800">{scannedData.usualUse}</p>
+                                <div className="bg-blue-950/30 rounded-2xl p-5 border border-blue-900/50">
+                                    <p className="text-sm text-blue-400 font-semibold mb-1">{labels.usualUse}:</p>
+                                    <p className="text-lg text-blue-300">{scannedData.usualUse}</p>
                                 </div>
                             )}
 
                             {/* Warning Message */}
-                            <div className="p-4 bg-red-50 rounded-2xl border-2 border-red-200">
-                                <p className="text-red-700">{labels.notInList}</p>
+                            <div className="p-4 bg-red-950/30 rounded-2xl border border-red-900/50">
+                                <p className="text-red-400">{labels.notInList}</p>
                             </div>
 
                             {/* Try Again Button */}
                             <motion.button
                                 onClick={handleTryAgain}
-                                className="w-full py-4 bg-blue-500 text-white rounded-2xl font-bold text-lg"
+                                className="w-full py-4 bg-primary text-white rounded-2xl font-bold text-lg"
                                 whileTap={{ scale: 0.98 }}
                             >
                                 🔍 {labels.tryAgain}
@@ -551,7 +552,12 @@ const ScanMedicine = () => {
                 className="hidden"
             />
 
-            {/* BottomNav handles global nav and voice controls */}
+            {/* Global Voice/Mic Button */}
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent pointer-events-none z-50">
+                <div className="pointer-events-auto">
+                    <DualActionButtons onRepeat={() => speak(labels.title)} />
+                </div>
+            </div>
         </motion.div>
     );
 };

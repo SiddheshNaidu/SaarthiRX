@@ -19,6 +19,7 @@ import {
     sendTestNotification
 } from '../services/notificationService';
 import ReminderForm from '../components/ReminderForm';
+import DualActionButtons from '../components/DualActionButtons';
 
 import { triggerAction, triggerSuccess } from '../utils/haptics';
 
@@ -182,42 +183,41 @@ const ReminderList = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white pb-44"
+            className="min-h-[100dvh] bg-neutral-950 flex flex-col relative overflow-hidden pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
             {/* Header */}
-            <div className="bg-gradient-to-br from-primary to-primary-dark text-white p-6 pt-8 pb-10 rounded-b-3xl shadow-premium-lg">
+            <div className="bg-neutral-900 border-b border-white/5 p-6 pt-8 max-h-min pb-10 rounded-b-3xl shadow-2xl relative z-10">
                 <motion.button
                     onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-2 text-white/80 hover:text-white mb-4"
+                    className="w-12 h-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 text-white/80 hover:text-white mb-6"
                     whileTap={{ scale: 0.95 }}
                     aria-label={t.back}
                 >
                     <span className="text-2xl">←</span>
-                    <span className="text-xl font-semibold">{t.back}</span>
                 </motion.button>
-                <h1 className="text-4xl font-display font-bold mb-2">{t.title}</h1>
-                <p className="text-lg text-white/80">{t.subtitle}</p>
+                <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mb-2 tracking-tight">{t.title}</h1>
+                <p className="text-base sm:text-lg text-white/50 font-medium">{t.subtitle}</p>
             </div>
 
             {/* Notification Permission Banner */}
             {notificationStatus === 'default' && (
                 <motion.div
-                    className="mx-6 mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-2xl"
+                    className="mx-6 mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl relative z-10 backdrop-blur-md"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                 >
                     <div className="flex items-center gap-3">
                         <span className="text-3xl">🔔</span>
                         <div className="flex-1">
-                            <p className="font-semibold text-blue-800 text-lg">{t.enableNotificationsTitle}</p>
-                            <p className="text-base text-blue-700">{t.enableNotificationsDesc}</p>
+                            <p className="font-semibold text-blue-400 text-lg tracking-tight">{t.enableNotificationsTitle}</p>
+                            <p className="text-base text-blue-100/70 font-medium">{t.enableNotificationsDesc}</p>
                         </div>
                         <motion.button
                             onClick={handleEnableNotifications}
-                            className="px-4 py-3 bg-blue-500 text-white font-semibold rounded-xl text-base"
+                            className="px-4 py-3 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 font-semibold rounded-xl text-base"
                             whileTap={{ scale: 0.95 }}
                             aria-label={t.enableButton}
                         >
@@ -229,7 +229,7 @@ const ReminderList = () => {
 
             {/* Notification Status Indicator */}
             {notificationStatus === 'granted' && (
-                <div className="mx-6 mt-4 flex items-center gap-2 text-green-700 text-base font-medium">
+                <div className="mx-6 mt-4 flex items-center gap-2 text-green-400 text-base font-medium relative z-10">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                     {t.notificationsEnabled}
                 </div>
@@ -237,13 +237,13 @@ const ReminderList = () => {
 
             {notificationStatus === 'denied' && (
                 <motion.div
-                    className="mx-6 mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-2xl"
+                    className="mx-6 mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl relative z-10 backdrop-blur-md"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                 >
                     <div className="flex items-center gap-3">
                         <span className="text-2xl">⚠️</span>
-                        <p className="text-base text-red-700 font-medium">
+                        <p className="text-base text-red-400 font-medium">
                             {t.notificationsBlocked}
                         </p>
                     </div>
@@ -251,7 +251,8 @@ const ReminderList = () => {
             )}
 
             {/* Content */}
-            <div className="flex-1 p-6 -mt-4">
+            <div className="flex-1 p-6 z-0 relative">
+                <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[120%] h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
                 {reminders.length === 0 ? (
                     /* Empty State */
                     <motion.div
@@ -259,9 +260,11 @@ const ReminderList = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <div className="text-8xl mb-6">💊</div>
-                        <h2 className="text-2xl font-bold text-gray-700 mb-2">{t.empty}</h2>
-                        <p className="text-gray-500 max-w-xs">{t.emptyHint}</p>
+                        <div className="w-32 h-32 mx-auto bg-neutral-900/50 rounded-full flex items-center justify-center border border-white/5 mb-6 shadow-inner">
+                            <span className="text-6xl drop-shadow-lg">💊</span>
+                        </div>
+                        <h2 className="text-2xl font-bold text-white/90 mb-2 tracking-tight">{t.empty}</h2>
+                        <p className="text-white/50 font-medium max-w-xs text-lg">{t.emptyHint}</p>
                     </motion.div>
                 ) : (
                     /* Reminder Cards */
@@ -269,7 +272,7 @@ const ReminderList = () => {
                         {reminders.map((reminder, index) => (
                             <motion.div
                                 key={reminder.id}
-                                className="bg-white rounded-2xl p-3 sm:p-5 shadow-md border border-gray-100 relative overflow-hidden"
+                                className="bg-neutral-900/80 backdrop-blur-xl rounded-2xl p-4 sm:p-5 shadow-xl border border-white/5 relative overflow-hidden"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.1, duration: 0.3 }}
@@ -296,19 +299,19 @@ const ReminderList = () => {
 
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-base sm:text-xl font-bold text-gray-800 truncate">
+                                        <h3 className="text-base sm:text-xl font-bold text-white/90 truncate">
                                             {reminder.medicineName}
                                         </h3>
                                         <div className="flex items-center gap-1 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
                                             <span className="text-lg text-primary font-semibold">
                                                 {formatTime(reminder.time)}
                                             </span>
-                                            <span className="text-gray-400 text-base">•</span>
-                                            <span className="text-gray-600 text-base">
+                                            <span className="text-white/30 text-base">•</span>
+                                            <span className="text-white/60 text-base">
                                                 {getTimePeriod(reminder.time)}
                                             </span>
                                         </div>
-                                        <p className="text-base text-gray-500 mt-1">
+                                        <p className="text-base text-white/50 mt-1">
                                             {formatDays(reminder.repeatDays)}
                                         </p>
                                     </div>
@@ -344,7 +347,7 @@ const ReminderList = () => {
                                                 e.stopPropagation();
                                                 setDeleteConfirm(reminder);
                                             }}
-                                            className="text-red-400 hover:text-red-600 min-w-[48px] min-h-[48px] p-3 sm:p-4 text-xl sm:text-2xl hover:bg-red-50 rounded-xl transition-colors mt-2 flex items-center justify-center"
+                                            className="text-red-400 hover:text-red-300 min-w-[48px] min-h-[48px] p-3 sm:p-4 text-xl sm:text-2xl hover:bg-red-500/10 rounded-xl transition-colors mt-2 flex items-center justify-center"
                                             whileTap={{ scale: 0.9 }}
                                             aria-label={`${t.deleteConfirm} ${reminder.medicineName}`}
                                         >
@@ -361,7 +364,7 @@ const ReminderList = () => {
             {/* Add Button - Above Mic, Centered, Simple */}
             <motion.button
                 onClick={handleAdd}
-                className="fixed bottom-48 inset-x-0 mx-auto w-fit bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-semibold text-lg shadow-md flex items-center gap-2 z-40"
+                className="fixed bottom-36 inset-x-0 mx-auto w-fit bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-6 py-4 rounded-full font-bold text-lg shadow-[0_10px_40px_rgba(249,115,22,0.3)] flex items-center gap-2 z-40 border border-white/10"
                 whileTap={{ scale: 0.97 }}
                 aria-label={t.addNew}
             >
@@ -391,22 +394,22 @@ const ReminderList = () => {
                         onClick={() => setDeleteConfirm(null)}
                     >
                         <motion.div
-                            className="bg-white rounded-3xl p-6 max-w-sm w-full"
+                            className="bg-neutral-900 border border-white/5 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl"
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
                             onClick={e => e.stopPropagation()}
                         >
-                            <h3 className="text-2xl font-bold text-gray-800 mb-4">
+                            <h3 className="text-2xl font-bold text-white/90 mb-4">
                                 {t.deleteTitle}
                             </h3>
-                            <p className="text-gray-600 mb-6">
+                            <p className="text-white/70 font-medium mb-6">
                                 {deleteConfirm.medicineName}
                             </p>
                             <div className="flex gap-3">
                                 <motion.button
                                     onClick={() => setDeleteConfirm(null)}
-                                    className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-semibold"
+                                    className="flex-1 py-3 px-4 bg-neutral-800 text-white/80 border border-white/10 rounded-xl font-semibold"
                                     whileTap={{ scale: 0.95 }}
                                 >
                                     {t.cancel}
@@ -425,7 +428,7 @@ const ReminderList = () => {
             </AnimatePresence>
 
             {/* Speaker + Mic Dual Action Buttons */}
-            {/* BottomNav handles global nav and voice controls */}
+            <DualActionButtons />
         </motion.div>
     );
 };
