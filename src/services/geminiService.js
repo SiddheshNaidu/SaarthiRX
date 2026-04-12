@@ -193,10 +193,11 @@ export const analyzePrescription = async (base64Image, mimeType = 'image/jpeg') 
     // Models to try in order — fastest/most-available first to avoid wasting time
     // on models that may not be accessible on the free tier
     // Models to try in order
-    const MODELS_TO_TRY = [
-        'gemini-2.0-flash',       // Primary: Fast, free-tier available
-        'gemini-1.5-pro'          // Fallback: guaranteed stable endpoint
-    ];
+   const MODELS_TO_TRY = [
+    'gemini-2.5-flash-lite',          // Free tier, stable, v1beta confirmed working
+    'gemini-2.5-flash',
+    'gemini-3-flash-preview'
+   ];
 
     // OCR-optimized prompt for handwritten Indian prescriptions
     // ANTI-HALLUCINATION: Conservative extraction with confidence scoring
@@ -484,11 +485,11 @@ export const analyzeMedicinePhoto = async (base64Image, mimeType = 'image/jpeg',
     const imageMime    = preprocessed.mimeType;
 
     // Use available model names for this API key
-    const MODELS_TO_TRY = [
-        'gemini-2.0-flash',       // Primary: Latest flash with vision
-        'gemini-2.5-flash',       // Fallback: Newer flash model
-        'gemini-flash-latest',    // Last resort: Generic flash
-    ];
+   const MODELS_TO_TRY = [
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-3-flash-preview'
+];
 
     const prompt = `You are analyzing a photo of medicine (tablet, capsule, syrup, or packaging).
 
@@ -581,9 +582,10 @@ export const verifyMedicinePhoto = async (base64Image, mimeType = 'image/jpeg', 
 
     // Use available model names for this API key
     const MODELS_TO_TRY = [
-        'gemini-2.0-flash',       // Primary: Latest flash with vision
-        'gemini-2.5-flash',       // Fallback: Newer flash model
-    ];
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-3-flash-preview'
+];
 
     const prescriptionList = prescriptionMedicines.map(m => m.name).join(', ');
 
