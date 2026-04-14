@@ -667,8 +667,8 @@ const MyMedicines = () => {
                         <motion.div 
                             className={`rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl ${
                                 verificationResult.matchFound 
-                                    ? 'bg-neutral-900 border border-white/5 border-4 border-green-500/50' 
-                                    : 'bg-neutral-900 border border-white/5 border-4 border-red-500/50'
+                                    ? 'bg-neutral-900 border-4 border-green-500/50' 
+                                    : 'bg-neutral-900 border-4 border-red-500/50'
                             }`}
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}

@@ -564,8 +564,19 @@ const ScanPrescription = () => {
         const existing = JSON.parse(localStorage.getItem('saarthi_medicines') || '[]');
         const duplicates = [];
         const newMedicines = [];
+        const blockedMedicines = [];
 
-        analysisData.medicines.forEach(medicine => {
+        // Dynamic import — keeps bundle lean for pages that don't scan
+        let checkDrugInteraction, SEVERITY;
+        try {
+            const interactionModule = await import('../services/drugInteractionService');
+            checkDrugInteraction = interactionModule.checkDrugInteraction;
+            SEVERITY = interactionModule.SEVERITY;
+        } catch (importErr) {
+            console.warn('⚠️ Could not load drug interaction service:', importErr);
+        }
+
+        for (const medicine of analysisData.medicines) {
             // Check for duplicates in localStorage
             const isDuplicate = existing.some(m => 
                 m.name?.toLowerCase().trim() === medicine.name?.toLowerCase().trim()
@@ -574,17 +585,40 @@ const ScanPrescription = () => {
             if (isDuplicate) {
                 duplicates.push(medicine.name);
                 console.log(`⚠️ Duplicate detected: ${medicine.name} - NOT adding`);
-            } else {
-                newMedicines.push({
-                    ...medicine,
-                    id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    quantity: 30,
-                    addedAt: Date.now(),
-                    prescriptionDate: analysisData.date,
-                    doctorName: analysisData.doctorName
-                });
+                continue;
             }
-        });
+
+            // Drug interaction check — against all saved + already approved new medicines
+            if (checkDrugInteraction) {
+                try {
+                    const allSaved = [...existing, ...newMedicines];
+                    const interactionResult = await checkDrugInteraction(medicine.name, allSaved);
+
+                    if (interactionResult.severity !== SEVERITY.SAFE) {
+                        blockedMedicines.push({
+                            name: medicine.name,
+                            severity: interactionResult.severity,
+                            reason: interactionResult.reason,
+                            conflictingMedicine: interactionResult.conflictingMedicine
+                        });
+                        console.warn(`⛔ BLOCKED: ${medicine.name} — ${interactionResult.severity} interaction with ${interactionResult.conflictingMedicine}`);
+                        continue; // Skip this medicine
+                    }
+                } catch (interactionErr) {
+                    console.warn(`⚠️ Interaction check failed for ${medicine.name}, allowing:`, interactionErr);
+                    // Fail-safe: don't block on check failure
+                }
+            }
+
+            newMedicines.push({
+                ...medicine,
+                id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                quantity: 30,
+                addedAt: Date.now(),
+                prescriptionDate: analysisData.date,
+                doctorName: analysisData.doctorName
+            });
+        }
 
         // Save new medicines to localStorage
         if (newMedicines.length > 0) {
@@ -594,6 +628,20 @@ const ScanPrescription = () => {
 
         const newCount = newMedicines.length;
         const duplicateCount = duplicates.length;
+        const blockedCount = blockedMedicines.length;
+
+        // Announce blocked medicines immediately
+        if (blockedCount > 0) {
+            triggerAlert();
+            const blockedNames = blockedMedicines.map(b => b.name).join(', ');
+            const blockedWarning = {
+                'en-US': `Warning! ${blockedCount} ${blockedCount === 1 ? 'medicine was' : 'medicines were'} blocked due to dangerous interaction: ${blockedNames}. Please consult your doctor.`,
+                'hi-IN': `चेतावनी! ${blockedCount} ${blockedCount === 1 ? 'दवाई' : 'दवाइयां'} खतरनाक इंटरैक्शन के कारण ब्लॉक ${blockedCount === 1 ? 'की गई' : 'की गईं'}: ${blockedNames}। कृपया डॉक्टर से बात करें।`,
+                'mr-IN': `सावधान! ${blockedCount} ${blockedCount === 1 ? 'औषध' : 'औषधे'} धोकादायक संवादामुळे ब्लॉक ${blockedCount === 1 ? 'केले' : 'केली'}: ${blockedNames}. कृपया डॉक्टरांशी बोला.`
+            };
+            speak(blockedWarning[language] || blockedWarning['en-US']);
+            console.warn('🚨 Blocked medicines:', blockedMedicines);
+        }
 
         // STEP 2: CREATE REMINDERS (GUARANTEED - no auth required)
         let remindersCreated = 0;

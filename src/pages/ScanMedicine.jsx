@@ -14,6 +14,8 @@ import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl, revokePreviewUrl } from '../utils/imageUtils';
 import { verifyMedicinePhoto } from '../services/geminiService';
 import { findBestMedicineMatch } from '../data/medicineDatabase';
+import { checkDrugInteraction, SEVERITY } from '../services/drugInteractionService';
+import DrugInteractionModal from '../components/DrugInteractionModal';
 import DualActionButtons from '../components/DualActionButtons';
 
 
@@ -36,6 +38,7 @@ const ScanMedicine = () => {
     const [matchedMedicine, setMatchedMedicine] = useState(null);
     const [scannedData, setScannedData] = useState(null);
     const [medicines, setMedicines] = useState([]);
+    const [interactionData, setInteractionData] = useState(null);
 
     const fileInputRef = useRef(null);
     const videoRef = useRef(null);
@@ -148,10 +151,35 @@ const ScanMedicine = () => {
         if (!videoRef.current) return;
         triggerAction();
 
+        const video = videoRef.current;
+
+        // Guard: wait for video dimensions (prevents 0×0 canvas)
+        if (!video.videoWidth || !video.videoHeight) {
+            console.warn('⚠️ Video dimensions not ready, waiting...');
+            await new Promise((resolve) => {
+                const onReady = () => {
+                    video.removeEventListener('loadeddata', onReady);
+                    resolve();
+                };
+                video.addEventListener('loadeddata', onReady);
+                // Timeout fallback — don't hang forever
+                setTimeout(resolve, 2000);
+            });
+        }
+
+        // Final check after waiting
+        if (!video.videoWidth || !video.videoHeight) {
+            console.error('❌ Video dimensions still 0 — cannot capture');
+            triggerAlert();
+            speak(labels.notInList || 'Camera not ready. Please try again.');
+            return;
+        }
+
         const canvas = document.createElement('canvas');
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         stopCamera();
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
@@ -285,14 +313,39 @@ const ScanMedicine = () => {
                 speak(matchMessage[language] || matchMessage['en-US']);
 
             } else {
-                // ❌ NO MATCH - Medicine NOT in prescription (DANGER)
+                // ❌ NO MATCH — Run drug interaction check before showing warning
+                console.log(`🔍 No match — checking drug interactions for: ${result.detectedName}`);
+
+                try {
+                    const interactionResult = await checkDrugInteraction(result.detectedName, medicines);
+
+                    if (interactionResult.severity !== SEVERITY.SAFE) {
+                        // ⛔ Dangerous interaction detected — show full-screen modal
+                        console.log('⛔ Drug interaction detected:', interactionResult);
+                        setInteractionData({
+                            severity: interactionResult.severity,
+                            newMedicine: result.detectedName || 'Unknown',
+                            conflictingMedicine: interactionResult.conflictingMedicine || '',
+                            reason: interactionResult.reason || '',
+                            precautions: interactionResult.precautions || [],
+                            source: interactionResult.source
+                        });
+                        setScanState(SCAN_STATES.NO_MATCH);
+                        return; // Modal handles voice + vibration
+                    }
+                } catch (interactionErr) {
+                    console.warn('⚠️ Drug interaction check failed, proceeding:', interactionErr);
+                    // Fail-safe: don't block on interaction check failure
+                }
+
+                // No dangerous interaction — show standard "not in list" warning
                 setScanState(SCAN_STATES.NO_MATCH);
                 triggerAlert();
 
                 const warningMessage = {
-                    'en-US': `Warning! This medicine, ${result.detectedName || 'unknown'}, is NOT in your saved prescription list. Please do not take it without asking your doctor.`,
-                    'hi-IN': `चेतावनी! यह दवाई, ${result.detectedName || 'अज्ञात'}, आपकी सहेजी गई पर्ची में नहीं है। कृपया डॉक्टर से पूछे बिना इसे न लें।`,
-                    'mr-IN': `सावधान! हे औषध, ${result.detectedName || 'अज्ञात'}, तुमच्या जतन केलेल्या प्रिस्क्रिप्शनमध्ये नाही. कृपया डॉक्टरांना विचारल्याशिवाय हे घेऊ नका.`
+                    'en-US': `This medicine, ${result.detectedName || 'unknown'}, is not in your saved prescription list. Please verify with your doctor before taking it.`,
+                    'hi-IN': `यह दवाई, ${result.detectedName || 'अज्ञात'}, आपकी सहेजी गई पर्ची में नहीं है। कृपया इसे लेने से पहले डॉक्टर से पुष्टि करें।`,
+                    'mr-IN': `हे औषध, ${result.detectedName || 'अज्ञात'}, तुमच्या जतन केलेल्या प्रिस्क्रिप्शनमध्ये नाही. कृपया घेण्यापूर्वी डॉक्टरांकडून खात्री करा.`
                 };
                 speak(warningMessage[language] || warningMessage['en-US']);
             }
@@ -322,6 +375,7 @@ const ScanMedicine = () => {
         setPreviewUrl(null);
         setMatchedMedicine(null);
         setScannedData(null);
+        setInteractionData(null);
         setScanState(SCAN_STATES.IDLE);
     };
 
@@ -558,6 +612,20 @@ const ScanMedicine = () => {
                     <DualActionButtons onRepeat={() => speak(labels.title)} />
                 </div>
             </div>
+            {/* Drug Interaction Modal — full-screen overlay */}
+            <DrugInteractionModal
+                isVisible={!!interactionData}
+                severity={interactionData?.severity}
+                newMedicine={interactionData?.newMedicine}
+                conflictingMedicine={interactionData?.conflictingMedicine}
+                reason={interactionData?.reason}
+                precautions={interactionData?.precautions}
+                language={language}
+                onDismiss={() => {
+                    setInteractionData(null);
+                    handleTryAgain();
+                }}
+            />
         </motion.div>
     );
 };
