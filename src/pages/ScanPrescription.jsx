@@ -710,7 +710,11 @@ const ScanPrescription = () => {
                 quantity: 30,
                 addedAt: Date.now(),
                 prescriptionDate: analysisData.date,
-                doctorName: analysisData.doctorName
+                doctorName: analysisData.doctorName,
+                // Duration-based expiry: compute expiresAt so medicine list shows remaining days
+                expiresAt: medicine.durationDays && medicine.durationDays > 0
+                    ? new Date(Date.now() + medicine.durationDays * 24 * 60 * 60 * 1000).toISOString()
+                    : null
             });
         }
 

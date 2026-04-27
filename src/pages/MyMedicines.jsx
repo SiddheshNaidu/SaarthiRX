@@ -15,6 +15,7 @@ import { verifyMedicinePhoto } from '../services/geminiService';
 import { triggerAction, triggerSuccess, triggerAlert } from '../utils/haptics';
 import { compressImage, createPreviewUrl } from '../utils/imageUtils';
 import DualActionButtons from '../components/DualActionButtons';
+import { getRemainingDays } from '../services/reminderService';
 
 
 const MyMedicines = () => {
@@ -73,7 +74,11 @@ const MyMedicines = () => {
             unknown: 'Unknown',
             ok: 'OK',
             checkDoctor: 'Please check with your doctor.',
-            viewFullDetails: 'View Full Prescription Details'
+            viewFullDetails: 'View Full Prescription Details',
+            daysLeft: 'days left',
+            dayLeft: 'day left',
+            ongoing: 'Ongoing',
+            courseComplete: 'Course complete'
         },
         'hi-IN': {
             title: 'मेरी दवाइयां',
@@ -109,7 +114,11 @@ const MyMedicines = () => {
             unknown: 'अज्ञात',
             ok: 'ठीक है',
             checkDoctor: 'कृपया अपने डॉक्टर से जांच करें।',
-            viewFullDetails: 'पूरा पर्चा विवरण देखें'
+            viewFullDetails: 'पूरा पर्चा विवरण देखें',
+            daysLeft: 'दिन बाकी',
+            dayLeft: 'दिन बाकी',
+            ongoing: 'चालू',
+            courseComplete: 'कोर्स पूरा'
         },
         'mr-IN': {
             title: 'माझी औषधे',
@@ -142,7 +151,11 @@ const MyMedicines = () => {
             unknown: 'अज्ञात',
             ok: 'ठीक आहे',
             checkDoctor: 'कृपया तुमच्या डॉक्टरांशी तपासा.',
-            viewFullDetails: 'संपूर्ण प्रिस्क्रिप्शन तपशील पहा'
+            viewFullDetails: 'संपूर्ण प्रिस्क्रिप्शन तपशील पहा',
+            daysLeft: 'दिवस बाकी',
+            dayLeft: 'दिवस बाकी',
+            ongoing: 'चालू',
+            courseComplete: 'कोर्स पूर्ण'
         }
     };
 
@@ -391,6 +404,33 @@ const MyMedicines = () => {
                                         <p className="text-sm font-medium text-white/50 truncate">
                                             {medicine.visualType || 'Tablet'} • {medicine.dosage || ''}
                                         </p>
+                                        {/* Duration Badge */}
+                                        {(() => {
+                                            const duration = getRemainingDays({
+                                                durationDays: medicine.durationDays,
+                                                expiresAt: medicine.expiresAt,
+                                                courseComplete: medicine.courseComplete
+                                            });
+                                            if (duration.isExpired) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-xs font-medium">
+                                                        ✅ {labels.courseComplete}
+                                                    </span>
+                                                );
+                                            } else if (duration.remaining !== null) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-medium">
+                                                        ⏳ {duration.remaining} {duration.remaining === 1 ? labels.dayLeft : labels.daysLeft}
+                                                    </span>
+                                                );
+                                            } else {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-xs font-medium">
+                                                        🔄 {labels.ongoing}
+                                                    </span>
+                                                );
+                                            }
+                                        })()}
                                     </div>
 
                                     {/* Quantity + Details */}
@@ -609,12 +649,26 @@ const MyMedicines = () => {
                                 <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center">
                                     <span className="text-2xl">📅</span>
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-sm text-white/50">{labels.duration}</p>
                                     <p className="text-xl font-bold text-white/90">
                                         {selectedMedicine.durationDays || 30} {labels.days}
                                     </p>
                                 </div>
+                                {/* Remaining days badge */}
+                                {(() => {
+                                    const duration = getRemainingDays({
+                                        durationDays: selectedMedicine.durationDays,
+                                        expiresAt: selectedMedicine.expiresAt,
+                                        courseComplete: selectedMedicine.courseComplete
+                                    });
+                                    if (duration.isExpired) {
+                                        return <span className="px-3 py-1.5 bg-green-500/10 border border-green-500/20 rounded-full text-green-400 text-sm font-semibold">✅ {labels.courseComplete}</span>;
+                                    } else if (duration.remaining !== null) {
+                                        return <span className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full text-amber-400 text-sm font-semibold">⏳ {duration.remaining} {duration.remaining === 1 ? labels.dayLeft : labels.daysLeft}</span>;
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         </div>
 

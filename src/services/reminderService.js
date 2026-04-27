@@ -336,7 +336,8 @@ export const createRemindersFromPrescription = (medicines, language = 'en-US') =
                     enabled: true,
                     repeatDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
                     // Pass prescription duration for auto-expiry
-                    durationDays: medicine.duration_days || null
+                    // NOTE: Gemini outputs camelCase durationDays (not snake_case duration_days)
+                    durationDays: medicine.durationDays || null
                 });
                 createdReminders.push(newReminder);
             }
