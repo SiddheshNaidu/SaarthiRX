@@ -391,16 +391,16 @@ const ScanMedicine = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col bg-neutral-950 text-neutral-100 font-sans pb-44"
+            className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-amber-50 text-gray-900 font-sans pb-44"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
             {/* Header */}
-            <div className="bg-neutral-950 text-white px-4 py-6 pt-8 pb-10 border-b border-neutral-800">
+            <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-4 py-6 pt-8 pb-10 rounded-b-3xl shadow-lg">
                 <motion.button
                     onClick={() => navigate('/dashboard')}
-                    className="flex items-center gap-2 text-neutral-400 hover:text-white mb-4"
+                    className="flex items-center gap-2 text-white/80 hover:text-white mb-4"
                     whileTap={{ scale: 0.95 }}
                 >
                     <span className="text-2xl">←</span>
@@ -435,11 +435,11 @@ const ScanMedicine = () => {
                             {/* Gallery Button */}
                             <motion.button
                                 onClick={() => fileInputRef.current?.click()}
-                                className="w-full p-6 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl hover:border-neutral-700 hover:bg-neutral-800 transition-all"
+                                className="w-full p-6 rounded-2xl bg-white border border-orange-200 shadow-md hover:border-orange-300 hover:bg-orange-50 transition-all"
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <div className="text-4xl mb-2">🖼️</div>
-                                <div className="text-xl font-semibold text-neutral-200">{labels.gallery}</div>
+                                <div className="text-xl font-semibold text-gray-800">{labels.gallery}</div>
                             </motion.button>
                         </motion.div>
                     )}
@@ -472,7 +472,7 @@ const ScanMedicine = () => {
                             </motion.button>
                             <motion.button
                                 onClick={stopCamera}
-                                className="mt-4 px-6 py-2 text-neutral-400 text-lg hover:text-white"
+                                className="mt-4 px-6 py-2 text-gray-500 text-lg hover:text-gray-800"
                                 whileTap={{ scale: 0.95 }}
                             >
                                 ✕ Cancel
@@ -494,7 +494,7 @@ const ScanMedicine = () => {
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                             />
-                            <p className="mt-6 text-xl text-neutral-300 font-medium">{labels.analyzing}</p>
+                            <p className="mt-6 text-xl text-gray-500 font-medium">{labels.analyzing}</p>
                         </motion.div>
                     )}
 
@@ -521,17 +521,17 @@ const ScanMedicine = () => {
                             </div>
 
                             {/* Medicine Card */}
-                            <div className="bg-neutral-900 rounded-2xl p-5 shadow-xl border-l-4" style={{ borderColor: getColorHex(matchedMedicine.visualColor) }}>
-                                <h3 className="text-2xl font-bold text-white mb-2">{matchedMedicine.name}</h3>
-                                <p className="text-neutral-400 mb-4">{matchedMedicine.visualDescription || matchedMedicine.dosage}</p>
+                            <div className="bg-white rounded-2xl p-5 shadow-md border-l-4" style={{ borderColor: getColorHex(matchedMedicine.visualColor) }}>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-2">{matchedMedicine.name}</h3>
+                                <p className="text-gray-600 mb-4">{matchedMedicine.visualDescription || matchedMedicine.dosage}</p>
                                 
                                 {/* Expiry if available */}
                                 {(scannedData?.expiryDate || matchedMedicine.expiryDate) && (
-                                    <div className="flex items-center gap-2 p-3 bg-yellow-950/30 border border-yellow-900/50 rounded-xl">
+                                    <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
                                         <span className="text-2xl">📅</span>
                                         <div>
-                                            <p className="text-sm text-neutral-500">{labels.expires}</p>
-                                            <p className="font-bold text-white">{scannedData?.expiryDate || matchedMedicine.expiryDate}</p>
+                                            <p className="text-sm text-gray-500">{labels.expires}</p>
+                                            <p className="font-bold text-gray-900">{scannedData?.expiryDate || matchedMedicine.expiryDate}</p>
                                         </div>
                                     </div>
                                 )}
@@ -572,15 +572,15 @@ const ScanMedicine = () => {
 
                             {/* Typical Use - Only show this */}
                             {scannedData?.usualUse && (
-                                <div className="bg-blue-950/30 rounded-2xl p-5 border border-blue-900/50">
-                                    <p className="text-sm text-blue-400 font-semibold mb-1">{labels.usualUse}:</p>
-                                    <p className="text-lg text-blue-300">{scannedData.usualUse}</p>
+                                <div className="bg-blue-50 rounded-2xl p-5 border border-blue-200">
+                                    <p className="text-sm text-blue-600 font-semibold mb-1">{labels.usualUse}:</p>
+                                    <p className="text-lg text-blue-700">{scannedData.usualUse}</p>
                                 </div>
                             )}
 
                             {/* Warning Message */}
-                            <div className="p-4 bg-red-950/30 rounded-2xl border border-red-900/50">
-                                <p className="text-red-400">{labels.notInList}</p>
+                            <div className="p-4 bg-red-50 rounded-2xl border border-red-200">
+                                <p className="text-red-600">{labels.notInList}</p>
                             </div>
 
                             {/* Try Again Button */}
@@ -607,7 +607,7 @@ const ScanMedicine = () => {
             />
 
             {/* Global Voice/Mic Button */}
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent pointer-events-none z-50">
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-amber-50 via-amber-50/90 to-transparent pointer-events-none z-50">
                 <div className="pointer-events-auto">
                     <DualActionButtons onRepeat={() => speak(labels.title)} />
                 </div>

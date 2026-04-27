@@ -242,7 +242,7 @@ const Dashboard = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col p-6 pb-44 relative overflow-y-auto bg-neutral-950 text-neutral-100 font-sans"
+            className="min-h-screen flex flex-col p-6 pb-44 relative overflow-y-auto bg-gradient-to-b from-orange-50 to-amber-50 font-sans max-w-lg mx-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -256,7 +256,7 @@ const Dashboard = () => {
                         saveUser(null);
                         navigate('/');
                     }}
-                    className="w-12 h-12 rounded-full bg-neutral-900 text-red-500 border border-red-900/50 flex items-center justify-center shadow-sm hover:shadow-md hover:bg-red-950/30 transition-all"
+                    className="w-12 h-12 rounded-full bg-white text-red-500 border border-red-200 flex items-center justify-center shadow-sm hover:shadow-md hover:bg-red-50 transition-all"
                     aria-label="Logout"
                 >
                     <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,10 +281,10 @@ const Dashboard = () => {
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 200 }}
                 />
-                <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-2 tracking-tight">
+                <h1 className="text-4xl md:text-5xl font-display font-bold text-gray-900 mb-2 tracking-tight">
                     {greeting}
                 </h1>
-                <p className="text-xl text-neutral-400">
+                <p className="text-xl text-gray-500">
                     {getPrompt('DASHBOARD_SUBTITLE', language)}
                 </p>
             </motion.div>
@@ -340,14 +340,14 @@ const Dashboard = () => {
                     {/* My Medicines */}
                     <motion.button
                         onClick={() => handleAction('medicines')}
-                        className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800 group shadow-xl transition-all flex flex-col items-center justify-center min-h-[120px]"
+                        className="p-5 rounded-2xl bg-white border-l-4 border-orange-400 hover:bg-orange-50 group shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center min-h-[120px]"
                         variants={{ ...cardHover, ...staggerItem }}
                         initial="rest"
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="mb-2 text-primary group-hover:scale-110 transition-transform"><PillIcon className="w-10 h-10" /></div>
-                        <div className="text-lg font-semibold text-neutral-200 text-center group-hover:text-white transition-colors">
+                        <div className="mb-2 text-orange-500 group-hover:scale-110 transition-transform"><PillIcon className="w-10 h-10" /></div>
+                        <div className="text-lg font-semibold text-gray-800 text-center group-hover:text-orange-600 transition-colors">
                             {getPrompt('DASHBOARD_MEDICINES', language)}
                         </div>
                     </motion.button>
@@ -355,14 +355,14 @@ const Dashboard = () => {
                     {/* Reminders */}
                     <motion.button
                         onClick={() => handleAction('reminders')}
-                        className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800 group shadow-xl transition-all flex flex-col items-center justify-center min-h-[120px]"
+                        className="p-5 rounded-2xl bg-white border-l-4 border-orange-400 hover:bg-orange-50 group shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center min-h-[120px]"
                         variants={{ ...cardHover, ...staggerItem }}
                         initial="rest"
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="mb-2 text-primary group-hover:scale-110 transition-transform"><BellIcon className="w-10 h-10" /></div>
-                        <div className="text-lg font-semibold text-neutral-200 text-center group-hover:text-white transition-colors">
+                        <div className="mb-2 text-orange-500 group-hover:scale-110 transition-transform"><BellIcon className="w-10 h-10" /></div>
+                        <div className="text-lg font-semibold text-gray-800 text-center group-hover:text-orange-600 transition-colors">
                             {getPrompt('DASHBOARD_REMINDERS', language)}
                         </div>
                     </motion.button>
@@ -370,14 +370,14 @@ const Dashboard = () => {
                     {/* Scan Medicine - NEW */}
                     <motion.button
                         onClick={() => handleAction('scanMedicine')}
-                        className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800 group shadow-xl transition-all flex flex-col items-center justify-center min-h-[120px]"
+                        className="p-5 rounded-2xl bg-white border-l-4 border-orange-400 hover:bg-orange-50 group shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center min-h-[120px]"
                         variants={{ ...cardHover, ...staggerItem }}
                         initial="rest"
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="mb-2 text-blue-500 group-hover:scale-110 transition-transform"><SearchIcon className="w-10 h-10" /></div>
-                        <div className="text-lg font-semibold text-neutral-200 text-center group-hover:text-white transition-colors">
+                        <div className="mb-2 text-orange-500 group-hover:scale-110 transition-transform"><SearchIcon className="w-10 h-10" /></div>
+                        <div className="text-lg font-semibold text-gray-800 text-center group-hover:text-orange-600 transition-colors">
                             {getPrompt('DASHBOARD_SCAN_MEDICINE', language)}
                         </div>
                     </motion.button>
@@ -385,14 +385,14 @@ const Dashboard = () => {
                     {/* History */}
                     <motion.button
                         onClick={() => handleAction('history')}
-                        className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800 group shadow-xl transition-all flex flex-col items-center justify-center min-h-[120px]"
+                        className="p-5 rounded-2xl bg-white border-l-4 border-orange-400 hover:bg-orange-50 group shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center min-h-[120px]"
                         variants={{ ...cardHover, ...staggerItem }}
                         initial="rest"
                         whileHover="hover"
                         whileTap="tap"
                     >
-                        <div className="mb-2 text-primary group-hover:scale-110 transition-transform"><ClipboardIcon className="w-10 h-10" /></div>
-                        <div className="text-lg font-semibold text-neutral-200 text-center group-hover:text-white transition-colors">
+                        <div className="mb-2 text-orange-500 group-hover:scale-110 transition-transform"><ClipboardIcon className="w-10 h-10" /></div>
+                        <div className="text-lg font-semibold text-gray-800 text-center group-hover:text-orange-600 transition-colors">
                             {getPrompt('DASHBOARD_HISTORY', language)}
                         </div>
                     </motion.button>
@@ -400,13 +400,13 @@ const Dashboard = () => {
 
                 {/* Voice Commands Info - Localized */}
                 <motion.div
-                    className="mt-6 p-5 bg-neutral-900 border border-neutral-800 shadow-xl rounded-2xl"
+                    className="mt-6 p-5 bg-white border border-orange-200 shadow-sm rounded-2xl"
                     variants={staggerItem}
                 >
                     <h3 className="text-lg font-semibold text-primary-light mb-3">
                         {getPrompt('DASHBOARD_VOICE_TITLE', language)}
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-base text-neutral-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-base text-gray-600">
                         <p>{getPrompt('DASHBOARD_VOICE_SCAN', language)}</p>
                         <p>{getPrompt('DASHBOARD_VOICE_MEDICINES', language)}</p>
                         <p>{getPrompt('DASHBOARD_VOICE_REMINDERS', language)}</p>
@@ -418,7 +418,7 @@ const Dashboard = () => {
             </motion.div>
 
             {/* Explicit DualActionButtons implementation specifically for the dashboard */}
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-neutral-950 via-neutral-950/80 to-transparent pointer-events-none z-50">
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-amber-50 via-amber-50/80 to-transparent pointer-events-none z-50">
                 <div className="pointer-events-auto">
                     <DualActionButtons onRepeat={handleRepeat} />
                 </div>

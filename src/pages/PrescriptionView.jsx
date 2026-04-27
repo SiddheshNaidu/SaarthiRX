@@ -144,15 +144,15 @@ const PrescriptionView = () => {
 
     return (
         <motion.div
-            className="min-h-[100dvh] bg-neutral-950 flex flex-col relative overflow-hidden"
+            className="min-h-[100dvh] bg-gradient-to-b from-orange-50 to-amber-50 flex flex-col relative overflow-hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
         >
-            <div className="sticky top-0 z-20 bg-neutral-900/90 backdrop-blur border-b border-white/5 px-4 py-4 shadow-xl">
+            <div className="sticky top-0 z-20 bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-4 shadow-lg rounded-b-2xl">
                 <button
                     onClick={() => navigate(-1)}
-                    className="w-12 h-12 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 text-white/80 hover:text-white"
+                    className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 text-white/80 hover:text-white"
                     aria-label={t('back')}
                 >
                     <span className="text-2xl">←</span>
@@ -162,46 +162,46 @@ const PrescriptionView = () => {
             <div className="flex-1 overflow-y-auto px-4 pt-6 pb-36 z-10 relative">
                 {/* Decorative Background */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120%] h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
-                <div className="bg-neutral-900/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/5 mb-6 relative overflow-hidden text-center">
-                    <p className="text-base text-white/50 font-medium">{t('title')}</p>
-                    <h1 className="text-3xl font-bold text-white/90 mt-1">{prescription.name}</h1>
-                    <p className="text-xl text-white/70 mt-1">{prescription.dosage || t('dosageFallback')}</p>
+                <div className="bg-white rounded-3xl p-6 shadow-md border border-orange-200 mb-6 relative overflow-hidden text-center">
+                    <p className="text-base text-gray-500 font-medium">{t('title')}</p>
+                    <h1 className="text-3xl font-bold text-gray-900 mt-1">{prescription.name}</h1>
+                    <p className="text-xl text-gray-600 mt-1">{prescription.dosage || t('dosageFallback')}</p>
                     <PillVisual description={prescription.visualDescription || ''} />
                     {prescription.visualDescription && (
-                        <p className="text-base text-white/70 text-center">💊 {prescription.visualDescription}</p>
+                        <p className="text-base text-gray-600 text-center">💊 {prescription.visualDescription}</p>
                     )}
                 </div>
 
                 <div className="space-y-4">
-                    <div className="bg-neutral-900/60 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5">
-                        <h2 className="text-2xl font-semibold text-white/90 mb-3">{t('whenToTake')}</h2>
+                    <div className="bg-white p-6 rounded-3xl shadow-md border border-orange-200">
+                        <h2 className="text-2xl font-semibold text-gray-900 mb-3">{t('whenToTake')}</h2>
                         <div className="grid grid-cols-2 gap-3">
                             {timings.map((item, idx) => (
-                                <div key={`${item.label}-${idx}`} className="flex items-center justify-center gap-2 p-4 bg-white/5 rounded-2xl border border-white/5">
+                                <div key={`${item.label}-${idx}`} className="flex items-center justify-center gap-2 p-4 bg-orange-50 rounded-2xl border border-orange-200">
                                     <span className="text-2xl">{item.icon}</span>
-                                    <span className="text-lg font-semibold text-white/80">{item.label}</span>
+                                    <span className="text-lg font-semibold text-gray-800">{item.label}</span>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="bg-neutral-900/60 backdrop-blur-md p-6 rounded-3xl shadow-xl border border-white/5">
-                        <h2 className="text-2xl font-semibold text-white/90 mb-3">{t('food')}</h2>
-                        <p className="text-xl text-white/80">
+                    <div className="bg-white p-6 rounded-3xl shadow-md border border-orange-200">
+                        <h2 className="text-2xl font-semibold text-gray-900 mb-3">{t('food')}</h2>
+                        <p className="text-xl text-gray-700">
                             {prescription.withFood ? `🍽️ ${t('withFood')}` : `🚫 ${t('emptyStomach')}`}
                         </p>
                     </div>
 
-                    <div className="bg-blue-500/10 p-6 rounded-3xl border border-blue-500/20 shadow-inner">
-                        <h2 className="text-2xl font-semibold text-blue-400 mb-2">{t('instructions')}</h2>
-                        <p className="text-xl leading-relaxed text-blue-100 font-medium">{instruction}</p>
+                    <div className="bg-blue-50 p-6 rounded-3xl border border-blue-200 shadow-sm">
+                        <h2 className="text-2xl font-semibold text-blue-700 mb-2">{t('instructions')}</h2>
+                        <p className="text-xl leading-relaxed text-blue-800 font-medium">{instruction}</p>
                     </div>
 
                     
 
                     <button
                         onClick={() => navigate('/medicines')}
-                        className="w-full min-h-[64px] p-4 rounded-2xl bg-gray-100 text-white/90 font-bold text-xl"
+                        className="w-full min-h-[64px] p-4 rounded-2xl bg-blue-600 text-white font-bold text-xl shadow-md"
                         aria-label={t('backToMedicines')}
                     >
                         {t('backToMedicines')}

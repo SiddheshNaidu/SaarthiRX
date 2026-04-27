@@ -912,7 +912,7 @@ const ScanPrescription = () => {
 
     return (
         <motion.div
-            className="min-h-screen flex flex-col p-6 pb-44 bg-neutral-950 text-neutral-100 font-sans"
+            className="min-h-screen flex flex-col p-6 pb-44 bg-gradient-to-b from-orange-50 to-amber-50 text-gray-900 font-sans"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -937,7 +937,7 @@ const ScanPrescription = () => {
             {/* Back Button */}
             <motion.button
                 onClick={() => navigate('/dashboard')}
-                className="flex items-center gap-2 text-neutral-400 hover:text-white mb-4"
+                className="flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-4"
                 whileTap={{ scale: 0.95 }}
                 aria-label={language === 'hi-IN' ? 'वापस जाएं' : language === 'mr-IN' ? 'मागे जा' : 'Go back'}
             >
@@ -949,7 +949,7 @@ const ScanPrescription = () => {
 
             {/* Title */}
             <motion.h1
-                className="text-3xl font-bold text-white tracking-tight text-center mb-8"
+                className="text-3xl font-bold text-gray-900 tracking-tight text-center mb-8"
                 initial={{ y: -20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
             >
@@ -981,13 +981,13 @@ const ScanPrescription = () => {
                         {/* Gallery Button - Secondary */}
                         <motion.button
                             onClick={handleGallerySelect}
-                            className="w-full p-6 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl hover:border-neutral-700 hover:bg-neutral-800 transition-all"
+                            className="w-full p-6 rounded-2xl bg-white border border-orange-200 shadow-md hover:border-orange-300 hover:bg-orange-50 transition-all"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             aria-label={getText('gallery')}
                         >
                             <div className="text-4xl mb-2">🖼️</div>
-                            <div className="text-xl font-semibold text-neutral-200">{getText('gallery')}</div>
+                            <div className="text-xl font-semibold text-gray-800">{getText('gallery')}</div>
                         </motion.button>
                     </motion.div>
                 )}
@@ -1018,7 +1018,7 @@ const ScanPrescription = () => {
                         {/* Capture Button - BIG */}
                         <motion.button
                             onClick={captureFromVideo}
-                            className="mt-6 w-24 h-24 rounded-full bg-neutral-900 border-4 border-primary shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center justify-center"
+                            className="mt-6 w-24 h-24 rounded-full bg-white border-4 border-primary shadow-[0_0_30px_rgba(37,99,235,0.3)] flex items-center justify-center"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
                             aria-label={getText('camera')}
@@ -1029,7 +1029,7 @@ const ScanPrescription = () => {
                         {/* Cancel Button */}
                         <motion.button
                             onClick={stopCamera}
-                            className="mt-4 px-6 py-2 text-neutral-400 text-lg"
+                            className="mt-4 px-6 py-2 text-gray-500 text-lg"
                             whileTap={{ scale: 0.95 }}
                             aria-label={getText('cancel')}
                         >
@@ -1053,7 +1053,7 @@ const ScanPrescription = () => {
                             className="max-w-full max-h-64 rounded-2xl shadow-lg"
                         />
                         <motion.div
-                            className="mt-6 text-xl text-neutral-300 font-medium"
+                            className="mt-6 text-xl text-gray-500 font-medium"
                             animate={{ opacity: [0.5, 1, 0.5] }}
                             transition={{ duration: 1.5, repeat: Infinity }}
                         >
@@ -1081,7 +1081,7 @@ const ScanPrescription = () => {
                         {/* Step label */}
                         <motion.p
                             key={analysisStep}
-                            className="text-xl font-semibold text-neutral-200 text-center px-4"
+                            className="text-xl font-semibold text-gray-700 text-center px-4"
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
                         >
@@ -1090,7 +1090,7 @@ const ScanPrescription = () => {
                         </motion.p>
 
                         {/* Progress bar */}
-                        <div className="w-64 h-3 bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="w-64 h-3 bg-orange-100 rounded-full overflow-hidden">
                             <motion.div
                                 className="h-full bg-primary rounded-full"
                                 initial={{ width: '0%' }}
@@ -1100,7 +1100,7 @@ const ScanPrescription = () => {
                         </div>
 
                         {/* Countdown */}
-                        <p className="text-neutral-500 text-sm">
+                        <p className="text-gray-400 text-sm">
                             {language === 'hi-IN'
                                 ? `अनुमानित समय: ${timeLeft}s`
                                 : language === 'mr-IN'
@@ -1111,7 +1111,7 @@ const ScanPrescription = () => {
                         {/* Cancel button */}
                         <motion.button
                             onClick={handleRetry}
-                            className="px-6 py-2 rounded-full border border-neutral-700 text-neutral-400 hover:text-white hover:bg-neutral-800 text-base"
+                            className="px-6 py-2 rounded-full border border-orange-200 text-gray-500 hover:text-gray-800 hover:bg-orange-50 text-base"
                             whileTap={{ scale: 0.95 }}
                         >
                             {getText('cancel')}
@@ -1131,13 +1131,13 @@ const ScanPrescription = () => {
                         {/* Conflict Warning */}
                         {conflicts.length > 0 && (
                             <motion.div
-                                className="p-4 bg-red-950/30 border border-red-900/50 rounded-2xl"
+                                className="p-4 bg-red-50 border border-red-200 rounded-2xl"
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: [1, 1.02, 1] }}
                                 transition={{ duration: 0.5, repeat: 3 }}
                             >
                                 <div className="text-2xl mb-2">⚠️ {conflicts[0].warning}</div>
-                                <p className="text-red-400">
+                                <p className="text-red-600">
                                     {generateConflictWarning(conflicts, language)}
                                 </p>
                             </motion.div>
@@ -1147,7 +1147,7 @@ const ScanPrescription = () => {
                         {analysisResult.medicines.map((med, idx) => (
                             <motion.div
                                 key={idx}
-                                className="p-5 bg-neutral-900 rounded-2xl shadow-xl border-l-4 border-primary"
+                                className="p-5 bg-white rounded-2xl shadow-md border-l-4 border-primary"
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: idx * 0.1 }}
@@ -1157,10 +1157,10 @@ const ScanPrescription = () => {
                                         {getTimingIcon(med.timing)}
                                     </div>
                                     <div className="flex-1">
-                                        <h3 className="text-xl font-bold text-white">{med.name}</h3>
-                                        <p className="text-neutral-400">{med.dosage} - {med.frequency}</p>
+                                        <h3 className="text-xl font-bold text-gray-900">{med.name}</h3>
+                                        <p className="text-gray-600">{med.dosage} - {med.frequency}</p>
                                         {med.visualDescription && (
-                                            <p className="text-sm text-neutral-500 mt-1">
+                                            <p className="text-sm text-gray-500 mt-1">
                                                 💊 {med.visualDescription}
                                             </p>
                                         )}
@@ -1170,8 +1170,8 @@ const ScanPrescription = () => {
                         ))}
 
                         {/* Auto-Save Confirmation - No manual buttons needed */}
-                        <div className="mb-24 p-4 bg-green-950/30 rounded-2xl border border-green-900/50">
-                            <div className="flex items-center gap-3 text-green-400">
+                        <div className="mb-24 p-4 bg-green-50 rounded-2xl border border-green-200">
+                            <div className="flex items-center gap-3 text-green-700">
                                 <span className="text-3xl">✅</span>
                                 <div>
                                     <p className="font-bold text-lg">
@@ -1179,7 +1179,7 @@ const ScanPrescription = () => {
                                          language === 'mr-IN' ? 'सर्व औषधे जतन केली!' : 
                                          'All medicines saved!'}
                                     </p>
-                                    <p className="text-sm text-green-500">
+                                    <p className="text-sm text-green-600">
                                         {language === 'hi-IN' ? 'रिमाइंडर भी सेट हो गए।' : 
                                          language === 'mr-IN' ? 'रिमाइंडर देखील सेट झाले.' : 
                                          'Reminders have been set automatically.'}
@@ -1239,7 +1239,7 @@ const ScanPrescription = () => {
             )}
 
             {/* Global Voice/Mic Button */}
-            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-neutral-950 via-neutral-950/90 to-transparent pointer-events-none z-50">
+            <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-amber-50 via-amber-50/90 to-transparent pointer-events-none z-50">
                 <div className="pointer-events-auto">
                     <DualActionButtons onRepeat={() => speak(getText('title'))} />
                 </div>
