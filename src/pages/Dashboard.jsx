@@ -9,6 +9,7 @@ import { cardHover, staggerContainer, staggerItem } from '../utils/animations';
 import { getPrompt } from '../utils/translations';
 import { CameraIcon, PillIcon, BellIcon, SearchIcon, ClipboardIcon } from '../components/Icons';
 import DualActionButtons from '../components/DualActionButtons';
+import { cleanExpiredReminders } from '../services/reminderService';
 
 // Session-level key: resets when browser tab closes (fresh login = new session)
 const SESSION_GREETED_KEY = 'saarthi_dashboard_greeted';
@@ -38,6 +39,19 @@ const Dashboard = () => {
     useEffect(() => {
         if (mountedRef.current) return; // Already ran in this mount cycle
         mountedRef.current = true;
+
+        // Clean expired medicine reminders on every dashboard load
+        const expired = cleanExpiredReminders();
+        if (expired.length > 0) {
+            const names = expired.map(r => r.medicineName).join(', ');
+            const expiryMsg = {
+                'en-US': `Good news! Your medicine course for ${names} is complete. ${expired.length === 1 ? 'That reminder has' : 'Those reminders have'} been turned off.`,
+                'hi-IN': `अच्छी खबर! ${names} की दवाई का कोर्स पूरा हो गया है। ${expired.length === 1 ? 'वह रिमाइंडर' : 'वे रिमाइंडर'} बंद कर दिए गए हैं।`,
+                'mr-IN': `चांगली बातमी! ${names} चे औषध कोर्स पूर्ण झाला आहे. ${expired.length === 1 ? 'तो रिमाइंडर' : 'ते रिमाइंडर'} बंद केले आहेत.`
+            };
+            // Announce after greeting
+            setTimeout(() => speak(expiryMsg[language] || expiryMsg['en-US']), 3000);
+        }
 
         // Check if we already greeted in this browser session
         const alreadyGreeted = sessionStorage.getItem(SESSION_GREETED_KEY) === 'true';

@@ -89,6 +89,20 @@ export const addReminder = (reminder) => {
     
     // Calculate next fire time using Phase 2 utility
     const nextFireTime = parseTimingToISO(reminder.time);
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DURATION-BASED EXPIRY
+    // If the prescription specifies a duration (e.g. 7 days, 15 days),
+    // compute an expiresAt date so reminders auto-stop after the course.
+    // null durationDays = chronic/maintenance med → no expiry.
+    // ═══════════════════════════════════════════════════════════════════
+    const durationDays = reminder.durationDays && reminder.durationDays > 0
+        ? reminder.durationDays
+        : null;
+    const startDate = new Date().toISOString();
+    const expiresAt = durationDays
+        ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
     
     const newReminder = {
         id: generateId(),
@@ -102,7 +116,11 @@ export const addReminder = (reminder) => {
         nextFireMinute: nextFireTime.getMinutes(),
         enabled: reminder.enabled !== undefined ? reminder.enabled : true,
         repeatDays: reminder.repeatDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        createdAt: new Date().toISOString()
+        createdAt: startDate,
+        // Duration-based expiry fields
+        startDate: startDate,
+        durationDays: durationDays,
+        expiresAt: expiresAt
     };
     reminders.push(newReminder);
     saveReminders(reminders);
@@ -316,7 +334,9 @@ export const createRemindersFromPrescription = (medicines, language = 'en-US') =
                     color: color,
                     time: time,
                     enabled: true,
-                    repeatDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                    repeatDays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                    // Pass prescription duration for auto-expiry
+                    durationDays: medicine.duration_days || null
                 });
                 createdReminders.push(newReminder);
             }
@@ -345,5 +365,75 @@ export const createRemindersFromPrescription = (medicines, language = 'en-US') =
         created: createdReminders.length,
         reminders: createdReminders,
         voiceAnnouncement: voiceTemplates[language] || voiceTemplates['en-US']
+    };
+};
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════
+ * DURATION-BASED AUTO-EXPIRY
+ * Scans all reminders and auto-disables any whose course has ended.
+ * Call this on app startup (Dashboard mount) and ReminderList mount.
+ * ═══════════════════════════════════════════════════════════════════════
+ * @returns {Array} List of reminders that were just expired (for voice announcement)
+ */
+export const cleanExpiredReminders = () => {
+    const reminders = getReminders();
+    const now = new Date();
+    const newlyExpired = [];
+
+    const updated = reminders.map(r => {
+        // Skip if no expiry, already disabled, or already marked expired
+        if (!r.expiresAt || !r.enabled || r.courseComplete) return r;
+
+        if (new Date(r.expiresAt) <= now) {
+            console.log(`⏰ Course complete: ${r.medicineName} (${r.durationDays} days expired)`);
+            newlyExpired.push(r);
+            return {
+                ...r,
+                enabled: false,
+                courseComplete: true,
+                courseCompletedAt: now.toISOString()
+            };
+        }
+        return r;
+    });
+
+    if (newlyExpired.length > 0) {
+        saveReminders(updated);
+        console.log(`🧹 Auto-expired ${newlyExpired.length} reminder(s)`);
+    }
+
+    return newlyExpired;
+};
+
+/**
+ * Get remaining days for a reminder's course
+ * @param {Object} reminder - Reminder object
+ * @returns {Object} { remaining: number|null, total: number|null, isExpired: boolean, label: string }
+ */
+export const getRemainingDays = (reminder) => {
+    // No duration set = chronic/ongoing medicine
+    if (!reminder.durationDays || !reminder.expiresAt) {
+        return { remaining: null, total: null, isExpired: false, label: 'Ongoing' };
+    }
+
+    const now = Date.now();
+    const expiresAt = new Date(reminder.expiresAt).getTime();
+    const remaining = Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000));
+
+    if (remaining <= 0 || reminder.courseComplete) {
+        return {
+            remaining: 0,
+            total: reminder.durationDays,
+            isExpired: true,
+            label: 'Course complete'
+        };
+    }
+
+    return {
+        remaining,
+        total: reminder.durationDays,
+        isExpired: false,
+        label: `${remaining} day${remaining !== 1 ? 's' : ''} left`
     };
 };

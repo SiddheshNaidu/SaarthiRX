@@ -11,7 +11,9 @@ import {
     deleteReminder,
     toggleReminder,
     formatTime,
-    getTimePeriod
+    getTimePeriod,
+    cleanExpiredReminders,
+    getRemainingDays
 } from '../services/reminderService';
 import {
     getNotificationStatus,
@@ -58,7 +60,11 @@ const ReminderList = () => {
             deleteConfirm: 'Delete',
             cancel: 'Cancel',
             enabled: 'On',
-            disabled: 'Off'
+            disabled: 'Off',
+            daysLeft: 'days left',
+            dayLeft: 'day left',
+            ongoing: 'Ongoing',
+            courseComplete: 'Course complete ✅'
         },
         'hi-IN': {
             title: 'मेरे रिमाइंडर',
@@ -77,7 +83,11 @@ const ReminderList = () => {
             deleteConfirm: 'हटाएं',
             cancel: 'रद्द करें',
             enabled: 'चालू',
-            disabled: 'बंद'
+            disabled: 'बंद',
+            daysLeft: 'दिन बाकी',
+            dayLeft: 'दिन बाकी',
+            ongoing: 'चालू',
+            courseComplete: 'कोर्स पूरा ✅'
         },
         'mr-IN': {
             title: 'माझे रिमाइंडर',
@@ -96,7 +106,11 @@ const ReminderList = () => {
             deleteConfirm: 'हटवा',
             cancel: 'रद्द करा',
             enabled: 'चालू',
-            disabled: 'बंद'
+            disabled: 'बंद',
+            daysLeft: 'दिवस बाकी',
+            dayLeft: 'दिवस बाकी',
+            ongoing: 'चालू',
+            courseComplete: 'कोर्स पूर्ण ✅'
         }
     };
 
@@ -104,6 +118,8 @@ const ReminderList = () => {
 
     // Load reminders function - defined before useEffect that uses it
     const loadReminders = () => {
+        // Auto-expire finished medicine courses before loading
+        cleanExpiredReminders();
         const data = getReminders();
         // Sort by time
         data.sort((a, b) => a.time.localeCompare(b.time));
@@ -314,6 +330,29 @@ const ReminderList = () => {
                                         <p className="text-base text-white/50 mt-1">
                                             {formatDays(reminder.repeatDays)}
                                         </p>
+                                        {/* Duration Badge */}
+                                        {(() => {
+                                            const duration = getRemainingDays(reminder);
+                                            if (duration.isExpired) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm font-medium">
+                                                        {t.courseComplete}
+                                                    </span>
+                                                );
+                                            } else if (duration.remaining !== null) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-sm font-medium">
+                                                        ⏳ {duration.remaining} {duration.remaining === 1 ? t.dayLeft : t.daysLeft}
+                                                    </span>
+                                                );
+                                            } else {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm font-medium">
+                                                        🔄 {t.ongoing}
+                                                    </span>
+                                                );
+                                            }
+                                        })()}
                                     </div>
 
                                     {/* Toggle & Actions */}
