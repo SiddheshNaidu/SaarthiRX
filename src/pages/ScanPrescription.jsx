@@ -335,25 +335,63 @@ const ScanPrescription = () => {
         triggerAction();
         setScanState(SCAN_STATES.CAMERA_LIVE);
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' },
+        // Try HD rear camera first, then fall back to any available camera
+        const constraintSets = [
+            // 1st try: HD rear camera (ideal for mobile phones)
+            {
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920, min: 1280 },
+                    height: { ideal: 1080, min: 720 }
+                },
                 audio: false
-            });
-            streamRef.current = stream;
+            },
+            // 2nd try: Any camera, any resolution (laptop / older devices)
+            {
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            },
+            // 3rd try: Absolute minimum — just give me a camera
+            { video: true, audio: false }
+        ];
 
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play();
+        let stream = null;
+        for (const constraints of constraintSets) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('📷 Camera opened with constraints:', JSON.stringify(constraints.video));
+                break;
+            } catch (err) {
+                console.warn('📷 Constraints failed, trying next:', err.name);
+                continue;
             }
+        }
 
-            speak(getPrompt('SCAN', language));
-        } catch (err) {
-            console.error('Camera error:', err);
-            // Fallback to file input if camera not available (desktop)
+        if (!stream) {
+            console.error('📷 All camera constraints failed — falling back to file input');
             setScanState(SCAN_STATES.IDLE);
             cameraInputRef.current?.click();
+            return;
         }
+
+        streamRef.current = stream;
+
+        // Log actual resolution we got from the camera
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+            const settings = videoTrack.getSettings();
+            console.log(`📷 Camera resolution: ${settings.width}×${settings.height}, facing: ${settings.facingMode || 'unknown'}`);
+        }
+
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+        }
+
+        speak(getPrompt('SCAN', language));
     };
 
     // Stop camera stream
@@ -368,41 +406,97 @@ const ScanPrescription = () => {
     };
 
     // Capture photo from video stream
+    // Strategy A: Use ImageCapture API for full-sensor-resolution stills,
+    // then route through handleImageSelect — the EXACT SAME PATH as gallery.
+    // This eliminates double-preprocessing and quality differences.
     const captureFromVideo = async () => {
-        if (!videoRef.current) return;
+        if (!videoRef.current || !streamRef.current) return;
 
         triggerAction();
 
-        const canvas = document.createElement('canvas');
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(videoRef.current, 0, 0);
+        const videoTrack = streamRef.current.getVideoTracks()[0];
+        if (!videoTrack) {
+            console.error('📸 No video track available');
+            return;
+        }
 
-        // Stop camera without resetting to IDLE (we're going to PREVIEW state)
+        let capturedFile = null;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // PRIMARY: ImageCapture API — gets FULL sensor resolution still photo
+        // A webcam streaming at 720p can often capture 1080p+ stills.
+        // This dramatically improves OCR readability vs video frame grabs.
+        // ═══════════════════════════════════════════════════════════════════
+        if (typeof ImageCapture !== 'undefined') {
+            try {
+                const imageCapture = new ImageCapture(videoTrack);
+
+                // Request maximum resolution the sensor supports
+                const photoCapabilities = await imageCapture.getPhotoCapabilities().catch(() => null);
+                const photoSettings = {};
+                if (photoCapabilities?.imageWidth?.max) {
+                    photoSettings.imageWidth = Math.min(photoCapabilities.imageWidth.max, 4096);
+                }
+                if (photoCapabilities?.imageHeight?.max) {
+                    photoSettings.imageHeight = Math.min(photoCapabilities.imageHeight.max, 4096);
+                }
+
+                console.log('📸 Using ImageCapture API — requesting full resolution:', photoSettings);
+                const blob = await imageCapture.takePhoto(photoSettings);
+
+                // Convert Blob to File (so handleImageSelect can process it identically to gallery)
+                capturedFile = new File([blob], 'camera-capture.jpg', { type: blob.type || 'image/jpeg' });
+                console.log(`📸 ImageCapture success: ${(capturedFile.size / 1024).toFixed(0)} KB, type: ${capturedFile.type}`);
+
+            } catch (icError) {
+                console.warn('📸 ImageCapture failed, falling back to video frame:', icError.message);
+                capturedFile = null;
+            }
+        } else {
+            console.log('📸 ImageCapture API not available, using video frame fallback');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // FALLBACK: Grab video frame via canvas (lower resolution, but works everywhere)
+        // No canvas filters — let the preprocessing pipeline handle enhancement.
+        // ═══════════════════════════════════════════════════════════════════
+        if (!capturedFile) {
+            const vw = videoRef.current.videoWidth;
+            const vh = videoRef.current.videoHeight;
+
+            if (!vw || !vh) {
+                console.error('📸 Video not ready — dimensions:', vw, vh);
+                speak(getText('handwritingError'));
+                return;
+            }
+
+            console.log(`📸 Fallback: grabbing video frame at ${vw}×${vh}`);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = vw;
+            canvas.height = vh;
+            const ctx = canvas.getContext('2d');
+            // NO canvas filters — raw frame goes through the same compressImage + 
+            // preprocessPrescriptionImage pipeline as gallery (single pass only)
+            ctx.drawImage(videoRef.current, 0, 0, vw, vh);
+
+            // Convert canvas to Blob, then to File
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+            capturedFile = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+            console.log(`📸 Frame capture: ${vw}×${vh}, ${(capturedFile.size / 1024).toFixed(0)} KB`);
+        }
+
+        // Stop camera before processing
         stopCamera(false);
 
-        // Get image data
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        const base64 = dataUrl.split(',')[1];
-
-        setPreviewUrl(dataUrl);
-        imageDataRef.current = {
-            base64,
-            mimeType: 'image/jpeg',
-            previewUrl: dataUrl
-        };
-
-        setScanState(SCAN_STATES.PREVIEW);
-
-        // Auto-analyze after brief preview
-        setTimeout(() => {
-            analyzeImage().catch(err => {
-                console.error('Unhandled analyzeImage error:', err);
-                setError(err.message || getText('handwritingError'));
-                setScanState(SCAN_STATES.ERROR);
-            });
-        }, 1000);
+        // ═══════════════════════════════════════════════════════════════════
+        // ROUTE THROUGH GALLERY PIPELINE — identical processing to file uploads
+        // handleImageSelect → validateImageFile → compressImage → 
+        //   preprocessPrescriptionImage → Gemini
+        // This is the PROVEN working path. No separate camera processing.
+        // ═══════════════════════════════════════════════════════════════════
+        const syntheticEvent = { target: { files: [capturedFile] } };
+        handleImageSelect(syntheticEvent);
     };
 
     // Handle camera capture (fallback for file input)
